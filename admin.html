@@ -28,7 +28,7 @@
     <h2>BÀN ĐIỀU PHỐI GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ TOÀN PHÒNG KHẢO SÁT REALTIME (<span id="count">0</span>)</div>
+        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ TOÀN PHÒNG REALTIME (<span id="count">0</span>)</div>
         <div id="player-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 10px;"></div>
     </div>
 
@@ -59,7 +59,7 @@
             <option value="">-- Chọn câu hỏi nhanh --</option>
             <optgroup label="VÒNG 1: Trắc nghiệm ABCD">
                 <option value="v1_1">V1 - Sản phẩm chủ lực bán chạy nhất quý trước là gì?</option>
-                <option value="v1_2">V1 - KPI viếng thăm hàng ngày tối thiểu là bao nhiêu %?</option>
+                <option value="v1_2">V1 - KPI viếng thăm khách hàng (MCP) tối thiểu là bao nhiêu %?</option>
             </optgroup>
             <optgroup label="VÒNG 2: Tự luận (Nhập từ)">
                 <option value="v2_1">V2 - Điền từ: Khách hàng là ... của doanh nghiệp</option>
@@ -104,15 +104,13 @@
         document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
     }
 
-    // ĐỒNG BỘ DANH SÁCH STT VÀ LUÔN HIỂN THỊ HIỆN TRẠNG CÂU GỢI Ý BÊN DƯỚI
     socket.on('update_player_list', (list) => {
         document.getElementById('count').innerText = list.length;
         
         const container = document.getElementById('player-list');
         container.innerHTML = list.map((p, index) => {
             let roleText = p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ 🩸' : 'Cảnh sát 🛡️';
-            // Nếu là Sát thủ, hiển thị câu gợi ý bên dưới để dễ ghi nhớ
-            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">↳ Gợi ý: "${p.clue}"</span>` : '';
+            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">↳ Gợi ý: "${p.clue}" [Cướp thêm: ${p.stolenVotes} phiếu]</span>` : '';
             
             return `
                 <div class="player-item">
