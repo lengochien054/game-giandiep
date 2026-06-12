@@ -36,18 +36,12 @@
         <p>Vui lòng nhập họ tên chính xác để nhận diện trên sơ đồ bàn tiệc.</p>
         <input type="text" id="username" placeholder="Nhập Họ và Tên...">
         <button onclick="joinGame()">Kết Nối Hệ Thống</button>
-        <div id="waiting-msg" style="display:none; text-align:center; margin-top:15px; color:var(--cyan-tech);">📡 Đang kết nối ổn định. Đợi quản trò bắt đầu...</div>
+        <div id="waiting-msg" style="display:none; text-align:center; margin-top:15px; color:var(--cyan-tech);">📡 Đang kết nối ổn định. Đợi quản trò phát bài...</div>
     </div>
 
     <div id="screen-role" class="screen">
         <h2>Danh Tính Bí Mật</h2>
-        <div id="role-display" style="text-align:center; font-size:24px; font-weight:bold; margin-bottom:20px;"></div>
-        <div id="assassin-action" style="display:none;">
-            <p>Mời Sát thủ nhập thông tin gợi ý về bạn (Ví dụ: Đeo kính, Ngồi bàn số 2...):</p>
-            <input type="text" id="clue-input" placeholder="Nhập manh mối của bạn...">
-            <button onclick="submitClue()">Xác Nhận Manh Mối</button>
-        </div>
-        <div id="police-action"><p style="text-align:center;">Hãy ăn uống vui vẻ và theo dõi sát sao biểu cảm của những người vừa cụng ly với bạn!</p></div>
+        <div id="role-text-box" style="font-size:16px; font-weight:500; line-height:1.6; margin-bottom:20px; text-align:center; padding:10px;"></div>
         <div id="live-rewards"></div>
     </div>
 
@@ -102,31 +96,22 @@
     socket.on('kicked_by_admin', () => { window.location.reload(); });
     socket.on('update_player_list', (list) => { allPlayers = list; });
 
+    // NHẬN THÔNG BÁO VAI TRÒ CHUẨN VĂN PHONG YÊU CẦU
     socket.on('receive_role', (data) => {
         myIdentity.role = data.role; 
         myIdentity.id = socket.id;
-        const display = document.getElementById('role-display');
-        showScreen('screen-role');
         
+        const textBox = document.getElementById('role-text-box');
+        textBox.innerHTML = data.message; // In chuẩn đoạn text từ Server gửi xuống
+
         if(data.role === 'ASSASSIN') {
-            display.innerText = 'SÁT THỦ 🩸'; display.style.color = '#ff6584';
-            document.getElementById('assassin-action').style.display = 'block';
-            document.getElementById('police-action').style.display = 'none';
+            textBox.style.color = '#ff6584'; // Đỏ kịch tính cho sát thủ
         } else {
-            display.innerText = 'MẬT VỤ CẢNH SÁT 🛡️'; display.style.color = '#64ffda';
-            document.getElementById('assassin-action').style.display = 'none';
-            document.getElementById('police-action').style.display = 'block';
+            textBox.style.color = '#64ffda'; // Xanh công nghệ cho cảnh sát
         }
+        showScreen('screen-role');
     });
 
-    function submitClue() {
-        const clue = document.getElementById('clue-input').value;
-        if(!clue) return alert('Nhập manh mối!');
-        socket.emit('submit_clue', clue);
-        document.getElementById('assassin-action').innerHTML = '<p style="color:#64ffda; text-align:center;">Hệ thống bảo mật đã ghi nhận gợi ý của bạn.</p>';
-    }
-
-    // LUỒNG NHẬN CÂU HỎI MINI-GAME
     socket.on('receive_minigame_question', (data) => {
         if(!myIdentity.isAlive) return;
         if(gameTimerInterval) clearInterval(gameTimerInterval);
@@ -164,7 +149,7 @@
     socket.on('minigame_feedback', (data) => {
         const fb = document.getElementById('minigame-feedback');
         if(data.isCorrect) {
-            fb.innerText = "✓ ĐÚNG RỒI! Hệ thống đang kiểm tra bảng xếp hạng tốc độ.";
+            fb.innerText = "✓ ĐÚNG RỒI! Hệ thống đang quét bảng xếp hạng tốc độ.";
             fb.style.backgroundColor = "rgba(100, 255, 218, 0.1)"; fb.style.color = "#64ffda";
         } else {
             fb.innerText = "✕ SAI MẤT RỒI! Hãy chờ câu hỏi kế tiếp từ Quản trò.";
@@ -192,7 +177,7 @@
                 <div class="reward-box" style="border-color:#ff6584;">
                     <p style="color:#ff6584; font-weight:bold; margin-bottom:8px;">${reward.message}</p>
                     <select id="kill-target">${options}</select>
-                    <button style="border-color:#ff6584; color:#ff6584; padding:6px;" onclick="executeKill()">BẤM ĐỂ HẠ SÁT</button>
+                    <button style="border-color:#ff6584; color:#ff6584; padding:6px;" onclick="executeKill()">BẤM ĐỂ HẠ SÁT MỤC TIÊU</button>
                 </div>` + container.innerHTML;
         }
     });
@@ -205,13 +190,11 @@
 
     socket.on('you_are_dead', () => { myIdentity.isAlive = false; showScreen('screen-dead'); });
 
-    // HIỂN THỊ DANH SÁCH BÌNH CHỌN VÀ ĐẾM NGƯỢC 60 GIÂY ĐỂ VOTE
     socket.on('open_vote_round', (data) => {
         if(!myIdentity.isAlive) return;
         if(gameTimerInterval) clearInterval(gameTimerInterval);
 
         const listContainer = document.getElementById('global-vote-list');
-        // Quét lọc chính xác: Chỉ hiện những người còn SỐNG và KHÔNG hiện tên chính mình
         listContainer.innerHTML = allPlayers.filter(p => p.isAlive && p.id !== socket.id).map(p => `
             <div class="vote-item">
                 <label for="v-${p.id}">${p.name}</label>
@@ -239,12 +222,11 @@
 
     function submitVote() {
         const selected = document.querySelector('input[name="suspect"]:checked');
-        if(!selected) return alert('Vui lòng tích chọn 1 người gán nghi vấn!');
-        
+        if(!selected) return alert('Hãy chọn 1 người!');
         socket.emit('submit_votes_round', [{ targetId: selected.value, votes: (1 + myIdentity.stolenVotes) }]);
         if(gameTimerInterval) clearInterval(gameTimerInterval);
         showScreen('screen-role');
-        alert("Phiếu bầu bí mật của bạn đã gửi lên cơ sở dữ liệu!");
+        alert("Phiếu bầu bí mật của bạn đã gửi đi thành công!");
     }
 
     socket.on('game_over_announced', (data) => alert(`TRÒ CHƠI KẾT THÚC!\nPhe thắng: ${data.winnerPhe === 'POLICE' ? 'CẢNH SÁT 🛡️' : 'SÁT THỦ 🩸'}`));
