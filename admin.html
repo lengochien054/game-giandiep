@@ -28,31 +28,27 @@
     <h2>BÀN ĐIỀU PHỐI GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">👥 NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
-        <div id="player-list" style="max-height: 180px; overflow-y: auto; margin-bottom: 10px;"></div>
+        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ TOÀN PHÒNG KHẢO SÁT REALTIME (<span id="count">0</span>)</div>
+        <div id="player-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 10px;"></div>
     </div>
 
     <div class="panel-box">
         <div class="panel-title">⚔️ CẤU HÌNH BAN PHÁT VAI TRÒ</div>
-        
         <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 1:</p>
         <div class="setup-row">
             <select id="as1-select" class="as-selector"><option value="">-- Chọn Sát Thủ 1 --</option></select>
             <input type="text" id="as1-clue" placeholder="Nhập gợi ý cho Sát thủ 1...">
         </div>
-
         <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 2:</p>
         <div class="setup-row">
             <select id="as2-select" class="as-selector"><option value="">-- Chọn Sát Thủ 2 --</option></select>
             <input type="text" id="as2-clue" placeholder="Nhập gợi ý cho Sát thủ 2...">
         </div>
-
         <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 3:</p>
         <div class="setup-row">
             <select id="as3-select" class="as-selector"><option value="">-- Chọn Sát Thủ 3 --</option></select>
             <input type="text" id="as3-clue" placeholder="Nhập gợi ý cho Sát thủ 3...">
         </div>
-
         <button class="btn-start" onclick="submitAssignedRoles()">OK - XÁC NHẬN PHÁT VAI TRÒ</button>
     </div>
 
@@ -63,7 +59,7 @@
             <option value="">-- Chọn câu hỏi nhanh --</option>
             <optgroup label="VÒNG 1: Trắc nghiệm ABCD">
                 <option value="v1_1">V1 - Sản phẩm chủ lực bán chạy nhất quý trước là gì?</option>
-                <option value="v1_2">V1 - KPI viếng thăm khách hàng (MCP) tối thiểu là bao nhiêu %?</option>
+                <option value="v1_2">V1 - KPI viếng thăm hàng ngày tối thiểu là bao nhiêu %?</option>
             </optgroup>
             <optgroup label="VÒNG 2: Tự luận (Nhập từ)">
                 <option value="v2_1">V2 - Điền từ: Khách hàng là ... của doanh nghiệp</option>
@@ -97,7 +93,7 @@
         v1_2: { type: "CHOICE", q: "KPI viếng thăm khách hàng (MCP) chuẩn quy định tối thiểu bao nhiêu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
         v2_1: { type: "TEXT", q: "Điền từ: Khách hàng là ________ của doanh nghiệp (viết liền không dấu)", a: "thuongde" },
         v2_2: { type: "TEXT", q: "Tên viết tắt của bộ phận Hệ thống Quản trị Kênh Phân Phối Sales là gì?", a: "dms" },
-        v3_1: { type: "CHOICE", q: "Chiêu dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
+        v3_1: { type: "CHOICE", q: "Chiến dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
     };
 
     function loadPresetQuestion() {
@@ -108,23 +104,33 @@
         document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
     }
 
-    // ĐỒNG BỘ DANH SÁCH - ĐÁNH SỐ THỨ TỰ THỦ CÔNG
+    // ĐỒNG BỘ DANH SÁCH STT VÀ LUÔN HIỂN THỊ HIỆN TRẠNG CÂU GỢI Ý BÊN DƯỚI
     socket.on('update_player_list', (list) => {
         document.getElementById('count').innerText = list.length;
         
-        // 1. Cập nhật bảng hiển thị danh sách người chơi có STT
         const container = document.getElementById('player-list');
-        container.innerHTML = list.map((p, index) => `
-            <div class="player-item">
-                <span><b>${index + 1}. ${p.name}</b> <small style="color:#8892b0;">(${p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ' : 'Cảnh sát'})</small> - ${p.isAlive?'SỐNG':'CHẾT'}</span>
-                <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
-            </div>
-        `).join('');
+        container.innerHTML = list.map((p, index) => {
+            let roleText = p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ 🩸' : 'Cảnh sát 🛡️';
+            // Nếu là Sát thủ, hiển thị câu gợi ý bên dưới để dễ ghi nhớ
+            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">↳ Gợi ý: "${p.clue}"</span>` : '';
+            
+            return `
+                <div class="player-item">
+                    <div>
+                        <span><b>${index + 1}. ${p.name}</b> <small style="color:#8892b0;">(${roleText})</small></span>
+                        ${clueDetailHTML}
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span style="font-weight:bold; font-size:12px; color:${p.isAlive ? '#64ffda' : '#ff6584'}">${p.isAlive ? 'SỐNG' : 'CHẾT'}</span>
+                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
-        // 2. Cập nhật dữ liệu vào các thẻ xổ chọn (Select dropdown) Sát thủ 1, 2, 3
         const selectors = document.querySelectorAll('.as-selector');
         selectors.forEach(sel => {
-            const currentVal = sel.value; // Giữ lại lựa chọn hiện tại nếu có cuộc cập nhật danh sách mới
+            const currentVal = sel.value;
             sel.innerHTML = `<option value="">-- Chọn Nhân Sự --</option>` + list.filter(p => p.isAlive).map(p => `
                 <option value="${p.id}">${p.name}</option>
             `).join('');
@@ -134,20 +140,15 @@
 
     function kickPlayer(socketId) { if(confirm("Xóa người chơi?")) { socket.emit('kick_player_by_admin', socketId); } }
 
-    // GỬI SÁT THỦ 1,2,3 LÊN SERVER XỬ LÝ
     function submitAssignedRoles() {
         const id1 = document.getElementById('as1-select').value;
         const clue1 = document.getElementById('as1-clue').value;
-
         const id2 = document.getElementById('as2-select').value;
         const clue2 = document.getElementById('as2-clue').value;
-
         const id3 = document.getElementById('as3-select').value;
         const clue3 = document.getElementById('as3-clue').value;
 
-        if(!id1 && !id2 && !id3) {
-            return alert("Vui lòng chỉ định ít nhất 1 Sát thủ để bắt đầu trò chơi!");
-        }
+        if(!id1 && !id2 && !id3) return alert("Vui lòng chỉ định ít nhất 1 Sát thủ!");
 
         socket.emit('admin_assign_roles', {
             assassins: [
@@ -156,7 +157,7 @@
                 { id: id3, clue: clue3 }
             ]
         });
-        alert("Đã phân phát danh tính và gửi nội dung thông báo cài đặt xuống máy người chơi!");
+        alert("Đã gửi danh tính cài đặt toàn phòng thành công!");
     }
     
     function triggerMinigame() {
@@ -199,9 +200,11 @@
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-timer').style.display = 'none';
         document.getElementById('btn-stop-q').style.display = 'none';
-        alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai trả lời đúng!'}`);
+        alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai nộp bài kịp!'}`);
     });
 
+    socket.on('player_died', (data) => alert(`HỆ THỐNG: Mật vụ [ ${data.victimName} ] đã trúng độc tử trận!`));
+    
     socket.on('vote_result_announced', (data) => {
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-vote-timer').style.display = 'none';
