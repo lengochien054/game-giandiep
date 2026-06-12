@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
             players[id].role = "POLICE";
             players[id].clue = "";
             players[id].correctAnswersCount = 0;
-            players[id].stolenVotes = 0; // Reset số phiếu cướp được
+            players[id].stolenVotes = 0;
         });
 
         data.assassins.forEach((as) => {
@@ -88,7 +88,6 @@ io.on('connection', (socket) => {
 
         if (killer && killer.role === "ASSASSIN" && victim && victim.isAlive) {
             victim.isAlive = false;
-            // SÁT THỦ CƯỚP ĐƯỢC THÊM 1 LƯỢT VOTE CỦA CẢNH SÁT BỊ BẮN
             killer.stolenVotes += 1; 
             
             io.to(targetId).emit('you_are_dead');
@@ -154,6 +153,10 @@ io.on('connection', (socket) => {
 
     socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
 
+    function startMinigameTimer(duration) {
+        // Hàm phụ trợ nếu cần quản lý nâng cao bộ đếm
+    }
+
     function endMinigame() {
         minigameActive = false;
         if (minigameTimeout) clearTimeout(minigameTimeout);
@@ -162,7 +165,7 @@ io.on('connection', (socket) => {
         io.emit('force_close_question');
     }
 
-    // LUỒNG MỞ CỔNG BÌNH CHỌN 60 GIÂY
+    // LUỒNG MỞ BÌNH CHỌN: SERVER LỌC SẴN DANH SÁCH NGƯỜI SỐNG GỬI ĐI
     socket.on('admin_open_vote_round', () => {
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
@@ -170,24 +173,22 @@ io.on('connection', (socket) => {
 
         io.emit('close_all_overlays'); 
         
-        // Tạo một mảng danh sách người chơi tối giản, đóng gói sạch sẽ gửi đi để tránh lỗi 404/Null danh sách
-        const cleanList = Object.values(players).map(p => ({ id: p.id, name: p.name, isAlive: p.isAlive }));
+        // Server tự động xử lý lọc dữ liệu thô chuẩn đét trước khi phát đi
+        const livingPlayers = Object.values(players)
+            .filter(p => p.isAlive)
+            .map(p => ({ id: p.id, name: p.name }));
 
-        io.emit('open_vote_round', { duration: 60, playerList: cleanList });
+        io.emit('open_vote_round', { duration: 60, targetList: livingPlayers });
 
         voteTimeout = setTimeout(() => { if (voteActive) endVoteRound(); }, 60000);
     });
 
-    // NHẬN PHIẾU VOTE TỪ NGƯỜI CHƠI (TÍNH TOÁN ĐÚNG ĐIỂM SỐ CỘNG DỒN)
     socket.on('submit_votes_round', (data) => {
         if (!voteActive) return;
-        // data mẫu: { voterId: '...', chosenIds: ['id1', 'id2', 'id3'], weight: 1 }
-        
-        // Với mỗi người được tích chọn, tính điểm = số lượt vote người đó sở hữu
         data.chosenIds.forEach(targetId => {
             currentVotes.push({
                 targetId: targetId,
-                votes: data.weight // Điểm lực nặng của phiếu (Đã bao gồm +1 mặc định và điểm cướp)
+                votes: data.weight 
             });
         });
     });
@@ -218,4 +219,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Hệ thống vận hành port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Hệ thống chạy mượt tại port ${PORT}`); });
