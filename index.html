@@ -20,8 +20,9 @@
         .btn-abcd { border-color: #b388ff; color: #b388ff; text-align: left; padding-left: 20px; }
         .btn-abcd:hover { background: rgba(179, 136, 255, 0.1); }
         .vote-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; background: #0a192f; padding: 10px; border-radius: 6px; border: 1px solid #233554; }
-        .vote-item { background: var(--bg-card); padding: 12px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #233554; display: flex; justify-content: space-between; align-items: center; }
-        .vote-item input[type="checkbox"] { transform: scale(1.5); accent-color: var(--cyan-tech); cursor: pointer; }
+        .vote-item { background: var(--bg-card); padding: 12px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #233554; display: flex; justify-content: space-between; align-items: center; color: #fff;}
+        .vote-item label { flex: 1; padding-left: 5px; cursor: pointer; font-size: 15px; font-weight: 500;}
+        .vote-item input[type="checkbox"] { transform: scale(1.5); accent-color: var(--cyan-tech); cursor: pointer; margin-right: 5px;}
         .status-box { background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); padding: 15px; border-radius: 6px; color: var(--alert-red); text-align: center; font-weight: bold; margin-bottom: 15px; }
         .reward-overlay { display: none; background: #112240; border: 2px solid var(--cyan-tech); padding: 15px; border-radius: 8px; color: #fff; margin-top: 15px; font-size: 14px; line-height: 1.5; }
         .feedback-box { text-align: center; font-size: 18px; font-weight: bold; margin-top: 10px; padding: 10px; border-radius: 6px; }
@@ -69,7 +70,7 @@
         <p id="vote-weight-status" style="color: var(--cyan-tech); font-weight: bold; text-align: center; margin-bottom: 10px;"></p>
         <p style="text-align: center; font-size: 13px; color: #8892b0; margin-bottom: 10px;">Hãy tích chọn đúng 3 người bạn cảm thấy nghi ngờ nhất:</p>
         <div class="vote-list" id="global-vote-list"></div>
-        <button onclick="submitVote()">XẠC NHẬN GỬI 3 PHIẾU BẦU</button>
+        <button onclick="submitVote()">XÁC NHẬN GỬI 3 PHIẾU BẦU</button>
     </div>
 
     <div id="screen-dead" class="screen">
@@ -101,7 +102,6 @@
 
     socket.on('kicked_by_admin', () => { window.location.reload(); });
     
-    // Đồng bộ liên tục số lượng phiếu bầu cướp được từ người chết từ dữ liệu server phát ra
     socket.on('update_player_list', (list) => { 
         allPlayers = list; 
         const me = list.find(p => p.id === socket.id);
@@ -206,25 +206,29 @@
     socket.on('you_are_dead', () => { myIdentity.isAlive = false; showScreen('screen-dead'); });
     socket.on('player_died', (data) => { alert(`⚠️ THÔNG BÁO TIỆC: Người chơi [ ${data.victimName} ] đã trúng độc và bị LOẠI khỏi cuộc chơi!`); });
 
-    // FIX LỖI HIỂN THỊ DANH SÁCH BÌNH CHỌN 
+    // SỬA LỖI ĐỌC HIỂN THỊ DANH SÁCH BÌNH CHỌN TRỰC TIẾP TỪ SERVER PHÁT RA
     socket.on('open_vote_round', (data) => {
         if(!myIdentity.isAlive) return;
         if(gameTimerInterval) clearInterval(gameTimerInterval);
 
-        // Hiển thị quyền lực nặng của phiếu bầu công khai
         const weightStatus = document.getElementById('vote-weight-status');
         let votePower = 1 + myIdentity.stolenVotes;
         weightStatus.innerText = `Sức mạnh phiếu bầu hiện tại của bạn: x${votePower} Điểm! ${myIdentity.stolenVotes > 0 ? `(Đã cộng thêm ${myIdentity.stolenVotes} lượt từ người bạn đã bắn)` : ''}`;
 
         const listContainer = document.getElementById('global-vote-list');
-        
-        // Render danh sách người chơi sạch từ Server, dùng Checkbox để chọn được 3 người
-        listContainer.innerHTML = data.playerList.filter(p => p.isAlive && p.id !== socket.id).map(p => `
-            <div class="vote-item">
-                <label for="v-${p.id}">${p.name}</label>
-                <input type="checkbox" name="suspect" class="vote-checkbox" id="v-${p.id}" value="${p.id}">
-            </div>
-        `).join('');
+        listContainer.innerHTML = ''; // Reset sạch khung chứa cũ
+
+        // Dữ liệu targetList đã được Server bóc tách làm sạch, chạy thẳng ko lo lỗi xung đột mảng
+        if (data.targetList && data.targetList.length > 0) {
+            listContainer.innerHTML = data.targetList.filter(p => p.id !== socket.id).map(p => `
+                <div class="vote-item">
+                    <label for="v-${p.id}">${p.name}</label>
+                    <input type="checkbox" name="suspect" class="vote-checkbox" id="v-${p.id}" value="${p.id}">
+                </div>
+            `).join('');
+        } else {
+            listContainer.innerHTML = `<p style="text-align:center; padding:10px; color:var(--text-sub);">Không tìm thấy nhân sự khả dụng để bỏ phiếu.</p>`;
+        }
 
         let voteTimeLeft = data.duration || 60;
         const voteTimerDisplay = document.getElementById('vote-timer');
@@ -244,7 +248,6 @@
         showScreen('screen-role');
     });
 
-    // LUỒNG SUBMIT VOTE KIỂM TRA ĐÚNG CHỌN 3 NGƯỜI
     function submitVote() {
         const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
         
@@ -255,7 +258,7 @@
         let chosenIds = [];
         checkedBoxes.forEach(box => chosenIds.push(box.value));
 
-        let votePowerWeight = 1 + myIdentity.stolenVotes; // 1 phiếu mặc định + số phiếu cướp được từ người chết
+        let votePowerWeight = 1 + myIdentity.stolenVotes;
 
         socket.emit('submit_votes_round', {
             voterId: socket.id,
