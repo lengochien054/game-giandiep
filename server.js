@@ -13,17 +13,20 @@ app.get('/', (req, res) => { res.sendFile(path.resolve(__dirname, 'index.html'))
 app.get('/admin', (req, res) => { res.sendFile(path.resolve(__dirname, 'admin.html')); });
 
 let players = {}; 
-let gameStatus = "LOBBY"; 
 let minigameTimeout = null;
 let minigameActive = false;
 let currentCorrectAnswer = "";
 let minigameAnswers = []; 
 
-io.on('connection', (socket) => {
-    console.log(`Kết nối mới: ${socket.id}`);
+let voteTimeout = null;
+let voteActive = false;
+let currentVotes = []; // Lưu danh sách phiếu [{voterId, targetId, votesCount}]
 
-    // Gửi danh sách hiện tại cho máy mới kết nối (Tránh lỗi hiển thị 1 người)
-    socket.emit('update_player_list', Object.values(players));
+io.on('connection', (socket) => {
+    console.log(`Kết nối: ${socket.id}`);
+    
+    // Gửi danh sách cập nhật ngay lập tức cho tất cả các máy bao gồm cả Admin
+    io.emit('update_player_list', Object.values(players));
 
     socket.on('join_game', (data) => {
         players[socket.id] = {
@@ -37,38 +40,25 @@ io.on('connection', (socket) => {
         io.emit('update_player_list', Object.values(players));
     });
 
-    socket.on('kick_player_by_admin', (badPlayerSocketId) => {
-        if (players[badPlayerSocketId]) {
-            io.to(badPlayerSocketId).emit('kicked_by_admin');
-            delete players[badPlayerSocketId];
+    socket.on('kick_player_by_admin', (badPlayerId) => {
+        if (players[badPlayerId]) {
+            io.to(badPlayerId).emit('kicked_by_admin');
+            delete players[badPlayerId];
             io.emit('update_player_list', Object.values(players));
         }
     });
 
-    socket.on('start_game', () => {
-        const playerIds = Object.keys(players);
-        if (playerIds.length < 3) { 
-            socket.emit('error_msg', 'Không đủ người chơi (Cần tối thiểu 3 người để chia phe)!');
-            return;
-        }
-
-        gameStatus = "PLAYING";
-        const shuffledIds = [...playerIds].sort(() => 0.5 - Math.random());
-        
-        // Tỷ lệ khoảng 15% là sát thủ (Tối thiểu 1, Tối đa 3)
-        const numAssassins = Math.min(3, Math.max(1, Math.floor(playerIds.length * 0.15)));
-        
-        shuffledIds.forEach((id, index) => {
-            if (index < numAssassins) { players[id].role = "ASSASSIN"; } 
-            else { players[id].role = "POLICE"; }
+    // ADMIN THỦ CÔNG CHỈ ĐỊNH VAI TRÒ HOẶC CHO CHẠY TỰ ĐỘNG
+    socket.on('admin_assign_roles', (assignedList) => {
+        // assignedList mẫu: [{id: '...', role: 'ASSASSIN'}, {id: '...', role: 'POLICE'}]
+        assignedList.forEach(item => {
+            if (players[item.id]) {
+                players[item.id].role = item.role;
+                // Bắn vai trò bí mật về máy cá nhân đó
+                io.to(item.id).emit('receive_role', { role: item.role });
+            }
         });
-
-        // Báo vai trò riêng tư cho từng người
-        shuffledIds.forEach(id => { 
-            io.to(id).emit('receive_role', { role: players[id].role }); 
-        });
-        
-        // Cập nhật danh sách kèm vai trò về cho Admin biết
+        // Cập nhật lại sơ đồ danh sách hiển thị cho Admin biết
         io.emit('update_player_list', Object.values(players));
     });
 
@@ -76,6 +66,7 @@ io.on('connection', (socket) => {
         if (players[socket.id] && players[socket.id].role === "ASSASSIN") {
             players[socket.id].clue = clueText;
             socket.emit('clue_saved');
+            io.emit('update_player_list', Object.values(players)); // Đồng bộ cho Admin thấy đã nhập gợi ý
         }
     });
 
@@ -92,6 +83,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // LUỒNG MINI-GAME CÓ THỜI GIAN ĐẾM NGƯỢC
     socket.on('host_trigger_minigame', (data) => {
         if (minigameTimeout) clearTimeout(minigameTimeout);
         minigameActive = true;
@@ -105,7 +97,6 @@ io.on('connection', (socket) => {
             duration: 60
         });
 
-        // HẾT 60 GIÂY: Tự động khóa sổ ép kết thúc luôn
         minigameTimeout = setTimeout(() => { if (minigameActive) endMinigame(); }, 60000);
     });
 
@@ -115,8 +106,6 @@ io.on('connection', (socket) => {
         if (!p || !p.isAlive) return;
 
         const isCorrect = answerText.toUpperCase().trim() === currentCorrectAnswer;
-        
-        // Trả kết quả Ngay Lập Tức về máy người chơi để báo Đúng hay Sai
         socket.emit('minigame_feedback', { isCorrect: isCorrect });
 
         if (!minigameAnswers.some(ans => ans.id === socket.id)) {
@@ -124,11 +113,13 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ĐÓNG MINI-GAME VÀ PHÂN PHÁT PHẦN THƯỞNG CHI TIẾT ĐÚNG / SAI
+    socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
+
     function endMinigame() {
         minigameActive = false;
         if (minigameTimeout) clearTimeout(minigameTimeout);
 
-        // Lọc những người trả lời đúng và xếp theo thời gian nhanh nhất
         const correctAnswers = minigameAnswers.filter(ans => ans.isCorrect).sort((a, b) => a.time - b.time);
         const winners = correctAnswers.slice(0, 3).map(ans => ans.name);
 
@@ -136,38 +127,64 @@ io.on('connection', (socket) => {
             const targetSocket = io.sockets.sockets.get(ans.id);
             if (targetSocket && players[ans.id]) {
                 if (players[ans.id].role === 'ASSASSIN') {
-                    targetSocket.emit('receive_reward', { type: 'KILL_SKILL', message: `🏆 TOP ${index+1} NHANH NHẤT! Bạn nhận được đặc quyền Ám Sát ngầm.` });
+                    targetSocket.emit('receive_reward', { 
+                        type: 'KILL_SKILL', 
+                        message: `🏆 TOP ${index+1} XUẤT SẮC! Hệ thống cấp Đạn: Hãy chọn 1 người sống bên dưới bàn tiệc, sau khi cụng ly / hô bia xong hãy bấm nút Kích hoạt để hạ sát họ ngầm!` 
+                    });
                 } else {
-                    // Lấy ngẫu nhiên manh mối của 1 sát thủ còn sống
+                    // Cảnh sát thắng: Gom toàn bộ manh mối của các Sát thủ đã nhập
                     const assassins = Object.values(players).filter(pl => pl.role === "ASSASSIN" && pl.clue);
-                    let randomClue = "Sát thủ ẩn mình rất kỹ, hệ thống chưa quét được đặc điểm.";
-                    if(assassins.length > 0) {
-                        randomClue = assassins[Math.floor(Math.random() * assassins.length)].clue;
-                    }
-                    targetSocket.emit('receive_reward', { type: 'CLUE', message: `🏆 TOP ${index+1} NHANH NHẤT! Manh mối quét được: "${randomClue}"` });
+                    let cluesList = assassins.map((as, i) => `Sát thủ ${i+1}: "${as.clue}"`).join("<br>");
+                    if(!cluesList) cluesList = "Sát thủ chưa khai báo manh mối hoặc giấu kín.";
+
+                    targetSocket.emit('receive_reward', { 
+                        type: 'CLUE', 
+                        message: `🏆 TOP ${index+1} XUẤT SẮC! Hệ thống rò rỉ dữ liệu mật:<br>${cluesList}` 
+                    });
                 }
             }
         });
 
         io.emit('minigame_ended', winners);
-        io.emit('force_close_question'); // Ép tất cả các máy đóng màn hình câu hỏi
+        io.emit('force_close_question');
     }
 
-    socket.on('open_vote_round', () => {
-        io.emit('open_vote_round'); // Kích hoạt lệnh mở bảng bầu chọn xuống toàn phòng
+    // LUỒNG BÌNH CHỌN 60 GIÂY TỰ ĐỘNG KHÓA CỔNG
+    socket.on('admin_open_vote_round', () => {
+        if (voteTimeout) clearTimeout(voteTimeout);
+        voteActive = true;
+        currentVotes = [];
+
+        // Phát tín hiệu mở giao diện kèm thời gian lùi số 60s cho người chơi
+        io.emit('open_vote_round', { duration: 60 });
+
+        voteTimeout = setTimeout(() => { if (voteActive) endVoteRound(); }, 60000);
     });
 
     socket.on('submit_votes_round', (votesArray) => {
+        if (!voteActive) return;
+        // votesArray mẫu: [{targetId: '...', votes: 1}]
+        currentVotes = currentVotes.concat(votesArray);
+    });
+
+    socket.on('admin_force_end_vote', () => { if (voteActive) endVoteRound(); });
+
+    function endVoteRound() {
+        voteActive = false;
+        if (voteTimeout) clearTimeout(voteTimeout);
+
         let voteCounts = {};
-        votesArray.forEach(v => { voteCounts[v.targetId] = (voteCounts[v.targetId] || 0) + v.votes; });
+        currentVotes.forEach(v => { voteCounts[v.targetId] = (voteCounts[v.targetId] || 0) + v.votes; });
+        
         let top5 = Object.keys(voteCounts).sort((a, b) => voteCounts[b] - voteCounts[a]).slice(0, 5);
         let hasAssassin = top5.some(id => players[id] && players[id].role === "ASSASSIN");
         
         io.emit('vote_result_announced', { 
             hasAssassin: hasAssassin, 
-            top5Names: top5.map(id => players[id] ? players[id].name : "Ẩn danh") 
+            top5Names: top5.map(id => players[id] ? players[id].name : "Nghi phạm ẩn danh") 
         });
-    });
+        io.emit('force_close_vote_screen'); // Ép máy người chơi đóng màn hình bầu chọn
+    }
 
     socket.on('disconnect', () => {
         delete players[socket.id];
@@ -176,4 +193,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Hệ thống chạy mượt tại port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Hệ thống ổn định tại port ${PORT}`); });
