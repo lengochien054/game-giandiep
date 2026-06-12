@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mật Mã Bí Mật - Deep Navy Theme</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-color: #0a192f;
+            --bg-card: #112240;
+            --text-main: #ccd6f6;
+            --text-sub: #8892b0;
+            --cyan-tech: #64ffda;
+            --alert-red: #ff6584;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(2, 12, 27, 0.7);
+            border: 1px solid #233554;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        h2 { color: var(--cyan-tech); font-size: 22px; margin-bottom: 16px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        p { color: var(--text-sub); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 14px;
+            background: #0a192f;
+            border: 1px solid #233554;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--cyan-tech); }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid var(--cyan-tech);
+            color: var(--cyan-tech);
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover { background: rgba(100, 255, 218, 0.1); }
+
+        .vote-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; }
+        .vote-item {
+            background: #0a192f;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border: 1px solid #233554;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-box {
+            background: rgba(255, 101, 132, 0.1);
+            border: 1px solid var(--alert-red);
+            padding: 15px;
+            border-radius: 6px;
+            color: var(--alert-red);
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .reward-box {
+            background: rgba(100, 255, 218, 0.1);
+            border: 1px solid var(--cyan-tech);
+            padding: 15px;
+            border-radius: 6px;
+            color: #fff;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- MÀN HÌNH 1: ĐĂNG NHẬP -->
+    <div id="screen-lobby" class="screen active">
+        <h2>Hệ Thống Tình Báo</h2>
+        <p>Vui lòng nhập tên của bạn để truy cập mạng lưới bí mật.</p>
+        <input type="text" id="username" placeholder="Nhập Tên của bạn...">
+        <button onclick="joinGame()">Kết Nối Hệ Thống</button>
+        <div id="waiting-msg" style="display:none; text-align:center; margin-top:15px; color:var(--cyan-tech);">
+            📡 Đang đợi Quản trò bắt đầu game...
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH 2: VAI TRÒ -->
+    <div id="screen-role" class="screen">
+        <h2>Danh Tính Bí Mật</h2>
+        <div id="role-display" style="text-align:center; font-size:24px; font-weight:bold; margin-bottom:20px;"></div>
+        
+        <div id="assassin-action" style="display:none;">
+            <p>Nhập 1 manh mối về bản thân (Ví dụ: mặc áo trắng, ban IT, đeo đồng hồ...):</p>
+            <input type="text" id="clue-input" placeholder="Nhập manh mối...">
+            <button onclick="submitClue()">Xác Nhận Manh Mối</button>
+        </div>
+        
+        <div id="police-action">
+            <p style="text-align:center;">Hãy ăn uống bình thường và quan sát xung quanh để tìm ra Sát Thủ!</p>
+        </div>
+        
+        <div id="live-rewards"></div>
+    </div>
+
+    <!-- MÀN HÌNH 3: MINI-GAME -->
+    <div id="screen-minigame" class="screen">
+        <h2>Mini-Game Tốc Chiến</h2>
+        <p id="minigame-question" style="font-size:18px; color:#fff; font-weight:bold; margin-bottom:15px;"></p>
+        <input type="text" id="minigame-answer" placeholder="Nhập đáp án nhanh nhất...">
+        <button onclick="submitAnswer()">Nộp Đáp Án</button>
+    </div>
+
+    <!-- MÀN HÌNH 4: VOTE -->
+    <div id="screen-vote" class="screen">
+        <h2>Bình Chọn Nghi Phạm</h2>
+        <p>Chọn người bạn nghi ngờ nhất trong danh sách:</p>
+        <div class="vote-list" id="global-vote-list"></div>
+        <button onclick="submitVote()">Gửi Phiếu Bầu</button>
+    </div>
+
+    <!-- MÀN HÌNH CHẾT -->
+    <div id="screen-dead" class="screen">
+        <div class="status-box">💀 BẠN ĐÃ TRÚNG ĐỘC TỬ TRẬN 💀</div>
+        <p style="text-align:center;">Vui lòng giữ im lặng tuyệt đối, tiếp tục ăn uống và quan sát trò chơi.</p>
+    </div>
+
+</div>
+
+<script>
+    const socket = io(); 
+    let myIdentity = { id: '', name: '', role: '', isAlive: true, stolenVotes: 0 };
+    let allPlayers = [];
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function joinGame() {
+        const name = document.getElementById('username').value;
+        if(!name) return alert('Vui lòng nhập tên!');
+        myIdentity.name = name;
+        
+        socket.emit('join_game', { name: name });
+        document.getElementById('username').style.display = 'none';
+        document.querySelector('#screen-lobby button').style.display = 'none';
+        document.getElementById('waiting-msg').style.display = 'block';
+    }
+
+    socket.on('update_player_list', (list) => {
+        allPlayers = list;
+    });
+
+    socket.on('receive_role', (data) => {
+        myIdentity.role = data.role;
+        myIdentity.id = socket.id;
+        
+        const display = document.getElementById('role-display');
+        showScreen('screen-role');
+
+        if(data.role === 'ASSASSIN') {
+            display.innerText = 'SÁT THỦ 🩸';
+            display.style.color = '#ff6584';
+            document.getElementById('assassin-action').style.display = 'block';
+            document.getElementById('police-action').style.display = 'none';
+        } else {
+            display.innerText = 'MẬT VỤ CẢNH SÁT 🛡️';
+            display.style.color = '#64ffda';
+            document.getElementById('assassin-action').style.display = 'none';
+            document.getElementById('police-action').style.display = 'block';
+        }
+    });
+
+    function submitClue() {
+        const clue = document.getElementById('clue-input').value;
+        if(!clue) return alert('Nhập manh mối!');
+        socket.emit('submit_clue', clue);
+        document.getElementById('assassin-action').innerHTML = '<p style="color:#64ffda; text-align:center;">Manh mối đã lưu thành công!</p>';
+    }
+
+    socket.on('receive_minigame_question', (data) => {
+        if(!myIdentity.isAlive) return;
+        document.getElementById('minigame-question').innerText = data.question;
+        document.getElementById('minigame-answer').value = '';
+        showScreen('screen-minigame');
+    });
+
+    function submitAnswer() {
+        const ans = document.getElementById('minigame-answer').value;
+        socket.emit('submit_minigame_answer', ans);
+        showScreen('screen-role');
+    }
+
+    socket.on('receive_reward', (reward) => {
+        const container = document.getElementById('live-rewards');
+        if(reward.type === 'CLUE') {
+            container.innerHTML += `<div class="reward-box" style="border-color:#64ffda;">${reward.message}</div>`;
+        } 
+        else if (reward.type === 'KILL_SKILL') {
+            let options = allPlayers.filter(p => p.id !== socket.id && p.isAlive).map(p => 
+                `<option value="${p.id}">${p.name}</option>`
+            ).join('');
+
+            container.innerHTML += `
+                <div class="reward-box" style="border-color:#ff6584;">
+                    <p style="color:#ff6584; font-weight:bold; margin-bottom:8px;">${reward.message}</p>
+                    <select id="kill-target">
+                        ${options}
+                    </select>
+                    <button style="border-color:#ff6584; color:#ff6584;" onclick="executeKill()">KÍCH HOẠT ÁM SÁT (SAU KHI CỤNG LY)</button>
+                </div>`;
+        }
+    });
+
+    function executeKill() {
+        const targetId = document.getElementById('kill-target').value;
+        if(!targetId) return alert('Không có mục tiêu!');
+        socket.emit('assassinate_player', targetId);
+        document.getElementById('live-rewards').innerHTML = '<p style="color:#ff6584; text-align:center;">Ám sát thành công!</p>';
+    }
+
+    socket.on('you_are_dead', () => {
+        myIdentity.isAlive = false;
+        showScreen('screen-dead');
+    });
+
+    socket.on('open_vote_round', () => {
+        if(!myIdentity.isAlive) return;
+        
+        const listContainer = document.getElementById('global-vote-list');
+        listContainer.innerHTML = '';
+        
+        allPlayers.forEach(p => {
+            if(p.isAlive && p.id !== socket.id) {
+                listContainer.innerHTML += `
+                    <div class="vote-item">
+                        <label>${p.name}</label>
+                        <input type="radio" name="suspect" value="${p.id}">
+                    </div>`;
+            }
+        });
+        showScreen('screen-vote');
+    });
+
+    function submitVote() {
+        const selected = document.querySelector('input[name="suspect"]:checked');
+        if(!selected) return alert('Hãy chọn 1 người!');
+        
+        let totalVotesToSend = 1 + myIdentity.stolenVotes; 
+        socket.emit('submit_votes_round', [{
+            targetId: selected.value,
+            votes: totalVotesToSend
+        }]);
+
+        showScreen('screen-role');
+        alert(`Đã gửi ${totalVotesToSend} phiếu bầu.`);
+    }
+
+    socket.on('game_over_announced', (data) => {
+        alert(`TRÒ CHƠI KẾT THÚC! Phe thắng: ${data.winnerPhe === 'POLICE' ? 'CẢNH SÁT' : 'SÁT THỦ'}`);
+    });
+</script>
+</body>
+</html>
