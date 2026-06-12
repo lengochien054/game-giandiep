@@ -15,12 +15,12 @@
         .panel-title { font-weight: bold; color: var(--purple-tech); margin-bottom: 10px; font-size: 15px; }
         button { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--purple-tech); color: var(--purple-tech); border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px; transition: 0.3s; }
         button:hover { background: rgba(179, 136, 255, 0.1); }
-        .btn-start { border-color: var(--cyan-tech); color: var(--cyan-tech); }
+        .btn-start { border-color: var(--cyan-tech); color: var(--cyan-tech); margin-top: 15px;}
         .btn-start:hover { background: rgba(100, 255, 218, 0.1); }
-        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; font-size: 14px;}
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; font-size: 14px;}
         .btn-kick { width: auto; padding: 4px 8px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
         select, input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
-        .role-badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        .setup-row { display: flex; gap: 10px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -28,11 +28,32 @@
     <h2>BÀN ĐIỀU PHỐI GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
-        <div id="player-list" style="max-height: 220px; overflow-y: auto; margin-bottom: 10px;"></div>
+        <div class="panel-title">👥 NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
+        <div id="player-list" style="max-height: 180px; overflow-y: auto; margin-bottom: 10px;"></div>
+    </div>
+
+    <div class="panel-box">
+        <div class="panel-title">⚔️ CẤU HÌNH BAN PHÁT VAI TRÒ</div>
         
-        <p style="font-size: 12px; color: #8892b0; margin-bottom: 8px;">* Mẹo: Chọn trực tiếp vai trò cho từng người ở ô trên rồi ấn nút dưới để chốt bài, hoặc để trống hệ thống sẽ chia ngẫu nhiên khi ấn nút.</p>
-        <button class="btn-start" onclick="submitAssignedRoles()">➔ CHỐT & PHÁT VAI TRÒ TOÀN PHÒNG</button>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 1:</p>
+        <div class="setup-row">
+            <select id="as1-select" class="as-selector"><option value="">-- Chọn Sát Thủ 1 --</option></select>
+            <input type="text" id="as1-clue" placeholder="Nhập gợi ý cho Sát thủ 1...">
+        </div>
+
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 2:</p>
+        <div class="setup-row">
+            <select id="as2-select" class="as-selector"><option value="">-- Chọn Sát Thủ 2 --</option></select>
+            <input type="text" id="as2-clue" placeholder="Nhập gợi ý cho Sát thủ 2...">
+        </div>
+
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 3:</p>
+        <div class="setup-row">
+            <select id="as3-select" class="as-selector"><option value="">-- Chọn Sát Thủ 3 --</option></select>
+            <input type="text" id="as3-clue" placeholder="Nhập gợi ý cho Sát thủ 3...">
+        </div>
+
+        <button class="btn-start" onclick="submitAssignedRoles()">OK - XÁC NHẬN PHÁT VAI TRÒ</button>
     </div>
 
     <div class="panel-box">
@@ -76,7 +97,7 @@
         v1_2: { type: "CHOICE", q: "KPI viếng thăm khách hàng (MCP) chuẩn quy định tối thiểu bao nhiêu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
         v2_1: { type: "TEXT", q: "Điền từ: Khách hàng là ________ của doanh nghiệp (viết liền không dấu)", a: "thuongde" },
         v2_2: { type: "TEXT", q: "Tên viết tắt của bộ phận Hệ thống Quản trị Kênh Phân Phối Sales là gì?", a: "dms" },
-        v3_1: { type: "CHOICE", q: "Chiến dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
+        v3_1: { type: "CHOICE", q: "Chiêu dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
     };
 
     function loadPresetQuestion() {
@@ -87,57 +108,55 @@
         document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
     }
 
-    // HIỂN THỊ DANH SÁCH CÓ Ô CHỌN VAI TRÒ HOẶC GỢI Ý CỦA SÁT THỦ 1,2,3
+    // ĐỒNG BỘ DANH SÁCH - ĐÁNH SỐ THỨ TỰ THỦ CÔNG
     socket.on('update_player_list', (list) => {
         document.getElementById('count').innerText = list.length;
-        const container = document.getElementById('player-list');
         
-        container.innerHTML = list.map(p => {
-            let roleSelectHTML = `
-                <select class="role-selector" data-id="${p.id}" style="width:110px; margin:0; padding:4px; font-size:12px;">
-                    <option value="PENDING" ${p.role==='PENDING'?'selected':''}>Chưa chia</option>
-                    <option value="POLICE" ${p.role==='POLICE'?'selected':''}>Cảnh Sát</option>
-                    <option value="ASSASSIN" ${p.role==='ASSASSIN'?'selected':''}>Sát Thủ</option>
-                </select>
-            `;
-            let clueStatus = p.role === 'ASSASSIN' ? `<br><small style="color:#ff6584">Gợi ý đã nhập: ${p.clue || 'Chưa nhập'}</small>` : '';
+        // 1. Cập nhật bảng hiển thị danh sách người chơi có STT
+        const container = document.getElementById('player-list');
+        container.innerHTML = list.map((p, index) => `
+            <div class="player-item">
+                <span><b>${index + 1}. ${p.name}</b> <small style="color:#8892b0;">(${p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ' : 'Cảnh sát'})</small> - ${p.isAlive?'SỐNG':'CHẾT'}</span>
+                <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+            </div>
+        `).join('');
 
-            return `
-                <div class="player-item">
-                    <div>
-                        <span><b>${p.name}</b> [${p.isAlive?'SỐNG':'CHẾT'}]</span>
-                        ${clueStatus}
-                    </div>
-                    <div style="display:flex; gap:5px; align-items:center;">
-                        ${roleSelectHTML}
-                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // 2. Cập nhật dữ liệu vào các thẻ xổ chọn (Select dropdown) Sát thủ 1, 2, 3
+        const selectors = document.querySelectorAll('.as-selector');
+        selectors.forEach(sel => {
+            const currentVal = sel.value; // Giữ lại lựa chọn hiện tại nếu có cuộc cập nhật danh sách mới
+            sel.innerHTML = `<option value="">-- Chọn Nhân Sự --</option>` + list.filter(p => p.isAlive).map(p => `
+                <option value="${p.id}">${p.name}</option>
+            `).join('');
+            sel.value = currentVal;
+        });
     });
 
-    function kickPlayer(socketId) { if(confirm("Xóa người chơi khỏi bàn?")) { socket.emit('kick_player_by_admin', socketId); } }
+    function kickPlayer(socketId) { if(confirm("Xóa người chơi?")) { socket.emit('kick_player_by_admin', socketId); } }
 
-    // GỬI CHỈ ĐỊNH VAI TRÒ
+    // GỬI SÁT THỦ 1,2,3 LÊN SERVER XỬ LÝ
     function submitAssignedRoles() {
-        const selectors = document.querySelectorAll('.role-selector');
-        let assignedList = [];
-        let totalAssassins = 0;
+        const id1 = document.getElementById('as1-select').value;
+        const clue1 = document.getElementById('as1-clue').value;
 
-        selectors.forEach(sel => {
-            let roleVal = sel.value;
-            assignedList.push({ id: sel.getAttribute('data-id'), role: roleVal });
-            if(roleVal === 'ASSASSIN') totalAssassins++;
-        });
+        const id2 = document.getElementById('as2-select').value;
+        const clue2 = document.getElementById('as2-clue').value;
 
-        // Nếu admin không chọn vai trò nào cả, ra lệnh cho server tự động chạy ngẫu nhiên
-        if(totalAssassins === 0) {
-            socket.emit('start_game');
-        } else {
-            socket.emit('admin_assign_roles', assignedList);
-            alert("Đã phân phát và gửi vai trò chỉ định xuống máy người chơi!");
+        const id3 = document.getElementById('as3-select').value;
+        const clue3 = document.getElementById('as3-clue').value;
+
+        if(!id1 && !id2 && !id3) {
+            return alert("Vui lòng chỉ định ít nhất 1 Sát thủ để bắt đầu trò chơi!");
         }
+
+        socket.emit('admin_assign_roles', {
+            assassins: [
+                { id: id1, clue: clue1 },
+                { id: id2, clue: clue2 },
+                { id: id3, clue: clue3 }
+            ]
+        });
+        alert("Đã phân phát danh tính và gửi nội dung thông báo cài đặt xuống máy người chơi!");
     }
     
     function triggerMinigame() {
@@ -159,16 +178,13 @@
 
     function forceEndMinigame() { socket.emit('admin_force_end_minigame'); }
 
-    // MỞ CỔNG BÌNH CHỌN 60 GIÂY VÀ ĐẾM NGƯỢC TRÊN MÁY ADMIN
     function openVoteRound() {
         socket.emit('admin_open_vote_round');
-        
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('btn-stop-v').style.display = 'block';
         const voteTimerBox = document.getElementById('admin-vote-timer');
         voteTimerBox.style.display = 'block';
         let voteTimeLeft = 60;
-        voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
 
         adminTimerInterval = setInterval(() => {
             voteTimeLeft--;
@@ -186,13 +202,11 @@
         alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai trả lời đúng!'}`);
     });
 
-    socket.on('player_died', (data) => alert(`HỆ THỐNG: Mật vụ [ ${data.victimName} ] đã trúng độc tử trận!`));
-    
     socket.on('vote_result_announced', (data) => {
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-vote-timer').style.display = 'none';
         document.getElementById('btn-stop-v').style.display = 'none';
-        alert(`KẾT QUẢ VOTE ROUND:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> HỆ THỐNG QUÉT: ${data.hasAssassin ? 'CÓ SÁT THỦ TRONG TOP 5! 🩸' : 'AN TOÀN, KHÔNG CÓ SÁT THỦ. 🛡️'}`);
+        alert(`KẾT QUẢ VOTE ROUND:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> QUÉT HỆ THỐNG: ${data.hasAssassin ? 'CÓ SÁT THỦ TRONG TOP 5! 🩸' : 'AN TOÀN, KHÔNG CÓ SÁT THỦ. 🛡️'}`);
     });
 </script>
 </body>
