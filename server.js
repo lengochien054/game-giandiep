@@ -9,10 +9,17 @@ const io = new Server(server, {
     cors: { origin: "*" }
 });
 
-app.use(express.static(path.join(__dirname)));
+// Ép cấu hình đường dẫn tuyệt đối cho Render nhận diện đúng file
+app.use(express.static(path.resolve(__dirname)));
 
-app.get('/', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
-app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'admin.html')); });
+// Định nghĩa chính xác luồng link
+app.get('/', (req, res) => { 
+    res.sendFile(path.resolve(__dirname, 'index.html')); 
+});
+
+app.get('/admin', (req, res) => { 
+    res.sendFile(path.resolve(__dirname, 'admin.html')); 
+});
 
 let players = {}; 
 let gameStatus = "LOBBY"; 
@@ -145,4 +152,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Server chạy tại port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Server chay tai port ${PORT}`); });
