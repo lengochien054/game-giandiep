@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bàn Điều Phối Quản Trò</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --purple-tech: #b388ff; --cyan-tech: #64ffda; --alert-red: #ff6584; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: var(--bg-card); border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; }
+        h2 { color: var(--purple-tech); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .panel-box { border: 1px solid #233554; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #0a192f; }
+        .panel-title { font-weight: bold; color: var(--purple-tech); margin-bottom: 10px; font-size: 15px; }
+        button { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--purple-tech); color: var(--purple-tech); border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px; transition: 0.3s; }
+        button:hover { background: rgba(179, 136, 255, 0.1); }
+        .btn-start { border-color: var(--cyan-tech); color: var(--cyan-tech); }
+        .btn-start:hover { background: rgba(100, 255, 218, 0.1); }
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; }
+        .btn-kick { width: auto; padding: 4px 10px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
+        select, input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>BÀN ĐIỀU PHỐI GAME</h2>
+    
+    <div class="panel-box">
+        <div class="panel-title">👥 DANH SÁCH NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
+        <div id="player-list" style="max-height: 180px; overflow-y: auto;"></div>
+        <button class="btn-start" onclick="startGame()">➔ PHÁT VAI TRÒ NGẪU NHIÊN (START GAME)</button>
+    </div>
+
+    <div class="panel-box">
+        <div class="panel-title">📝 KHO CÂU HỎI THIẾT LẬP SẴN</div>
+        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ ĐANG TRONG THỜI GIAN TRẢ LỜI: 60s</div>
+        <select id="question-selector" onchange="loadPresetQuestion()">
+            <option value="">-- Chọn câu hỏi mẫu --</option>
+            <optgroup label="VÒNG 1: Trắc nghiệm ABCD">
+                <option value="v1_1">V1 - Sản phẩm chủ lực bán chạy nhất quý trước là gì?</option>
+                <option value="v1_2">V1 - KPI viếng thăm khách hàng (MCP) tối thiểu là bao nhiêu %?</option>
+            </optgroup>
+            <optgroup label="VÒNG 2: Tự luận (Nhập từ)">
+                <option value="v2_1">V2 - Điền từ: Khách hàng là ... của doanh nghiệp</option>
+                <option value="v2_2">V2 - Tên viết tắt của bộ phận Quản lý Hệ thống IT là gì?</option>
+            </optgroup>
+            <optgroup label="VÒNG 3: Trắc nghiệm ABCD tăng tốc">
+                <option value="v3_1">V3 - Chiến dịch bùng nổ doanh số tới đây diễn ra vào tháng mấy?</option>
+            </optgroup>
+        </select>
+        <input type="text" id="display-q" placeholder="Nội dung câu hỏi..." readonly>
+        <input type="text" id="display-a" placeholder="Đáp án đúng..." readonly>
+        <button onclick="triggerMinigame()">🔥 TUNG CÂU HỎI XUỐNG ĐIỆN THOẠI</button>
+    </div>
+
+    <div class="panel-box">
+        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU</div>
+        <button onclick="openVoteRound()">MỞ CỔNG VOTE NGHI PHẠM</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let currentQData = null;
+    let adminTimerInterval = null;
+
+    const presets = {
+        v1_1: { type: "CHOICE", q: "Sản phẩm chủ lực bán chạy nhất quý trước là gì?", a: "A", options: ["A. Sữa tươi tiệt trùng", "B. Nước mắm cốt", "C. Mì ăn liền", "D. Bánh ngọt"] },
+        v1_2: { type: "CHOICE", q: "KPI viếng thăm khách hàng (MCP) chuẩn quy định tối thiểu bao nhiêu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
+        v2_1: { type: "TEXT", q: "Điền từ: Khách hàng là ________ của doanh nghiệp (viết liền không dấu)", a: "thuongde" },
+        v2_2: { type: "TEXT", q: "Tên viết tắt của bộ phận Hệ thống Quản trị Kênh Phân Phối Sales là gì?", a: "dms" },
+        v3_1: { type: "CHOICE", q: "Chiến dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
+    };
+
+    function loadPresetQuestion() {
+        const id = document.getElementById('question-selector').value;
+        if(!id) return;
+        currentQData = presets[id];
+        document.getElementById('display-q').value = currentQData.q;
+        document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
+    }
+
+    socket.on('update_player_list', (list) => {
+        document.getElementById('count').innerText = list.length;
+        const container = document.getElementById('player-list');
+        container.innerHTML = list.map(p => `
+            <div class="player-item">
+                <span><b>${p.name}</b></span>
+                <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+            </div>
+        `).join('');
+    });
+
+    function kickPlayer(socketId) { if(confirm("Xóa người chơi này?")) { socket.emit('kick_player_by_admin', socketId); } }
+    function startGame() { socket.emit('start_game'); alert("Đã phát vai trò ngẫu nhiên!"); }
+    
+    function triggerMinigame() {
+        if(!currentQData) return alert("Vui lòng lựa chọn câu hỏi mẫu trước!");
+        socket.emit('host_trigger_minigame', { id: Date.now(), type: currentQData.type, question: currentQData.q, correctAnswer: currentQData.a, options: currentQData.options || [] });
+        
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        const timerBox = document.getElementById('admin-timer');
+        timerBox.style.display = 'block';
+        let timeLeft = 60;
+
+        adminTimerInterval = setInterval(() => {
+            timeLeft--;
+            timerBox.innerText = `⏳ ĐANG TRONG THỜI GIAN TRẢ LỜI: ${timeLeft}s`;
+            if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; }
+        }, 1000);
+    }
+
+    function openVoteRound() { socket.emit('open_vote_round'); alert("Đã mở cổng bỏ phiếu!"); }
+    socket.on('minigame_ended', (winners) => {
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('admin-timer').style.display = 'none';
+        alert(`KẾT THÚC! Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không có ai trả lời đúng!'}`);
+    });
+    socket.on('vote_result_announced', (data) => alert(`KẾT QUẢ VOTE:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> HỆ THỐNG QUÉT: ${data.hasAssassin ? 'CÓ SÁT THỦ! 🩸' : 'AN TOÀN. 🛡️'}`));
+</script>
+</body>
+</html>
