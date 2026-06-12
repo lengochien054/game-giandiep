@@ -9,7 +9,7 @@
         :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --purple-tech: #b388ff; --cyan-tech: #64ffda; --alert-red: #ff6584; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 500px; background: var(--bg-card); border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; }
+        .container { width: 100%; max-width: 550px; background: var(--bg-card); border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; }
         h2 { color: var(--purple-tech); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
         .panel-box { border: 1px solid #233554; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #0a192f; }
         .panel-title { font-weight: bold; color: var(--purple-tech); margin-bottom: 10px; font-size: 15px; }
@@ -17,9 +17,10 @@
         button:hover { background: rgba(179, 136, 255, 0.1); }
         .btn-start { border-color: var(--cyan-tech); color: var(--cyan-tech); }
         .btn-start:hover { background: rgba(100, 255, 218, 0.1); }
-        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; }
-        .btn-kick { width: auto; padding: 4px 10px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; font-size: 14px;}
+        .btn-kick { width: auto; padding: 4px 8px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
         select, input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
+        .role-badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,16 +28,18 @@
     <h2>BÀN ĐIỀU PHỐI GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">👥 DANH SÁCH NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
-        <div id="player-list" style="max-height: 180px; overflow-y: auto;"></div>
-        <button class="btn-start" onclick="startGame()">➔ PHÁT VAI TRÒ NGẪU NHIÊN (START GAME)</button>
+        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ ĐÃ VÀO PHÒNG (<span id="count">0</span>)</div>
+        <div id="player-list" style="max-height: 220px; overflow-y: auto; margin-bottom: 10px;"></div>
+        
+        <p style="font-size: 12px; color: #8892b0; margin-bottom: 8px;">* Mẹo: Chọn trực tiếp vai trò cho từng người ở ô trên rồi ấn nút dưới để chốt bài, hoặc để trống hệ thống sẽ chia ngẫu nhiên khi ấn nút.</p>
+        <button class="btn-start" onclick="submitAssignedRoles()">➔ CHỐT & PHÁT VAI TRÒ TOÀN PHÒNG</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">📝 KHO CÂU HỎI THIẾT LẬP SẴN</div>
-        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ ĐANG TRONG THỜI GIAN TRẢ LỜI: 60s</div>
+        <div class="panel-title">📝 KHO CÂU HỎI THIẾT LẬP SẴN (60 GIÂY)</div>
+        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: 60s</div>
         <select id="question-selector" onchange="loadPresetQuestion()">
-            <option value="">-- Chọn câu hỏi mẫu --</option>
+            <option value="">-- Chọn câu hỏi nhanh --</option>
             <optgroup label="VÒNG 1: Trắc nghiệm ABCD">
                 <option value="v1_1">V1 - Sản phẩm chủ lực bán chạy nhất quý trước là gì?</option>
                 <option value="v1_2">V1 - KPI viếng thăm khách hàng (MCP) tối thiểu là bao nhiêu %?</option>
@@ -52,11 +55,14 @@
         <input type="text" id="display-q" placeholder="Nội dung câu hỏi..." readonly>
         <input type="text" id="display-a" placeholder="Đáp án đúng..." readonly>
         <button onclick="triggerMinigame()">🔥 TUNG CÂU HỎI XUỐNG ĐIỆN THOẠI</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-q" onclick="forceEndMinigame()">⏹ KHÓA SỔ CÂU HỎI SỚM</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU</div>
-        <button onclick="openVoteRound()">MỞ CỔNG VOTE NGHI PHẠM</button>
+        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU NGHI PHẠM (60 GIÂY)</div>
+        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">⏳ CỔNG VOTE ĐANG MỞ: 60s</div>
+        <button onclick="openVoteRound()">MỞ CỔNG VOTE (TỰ ĐỘNG KHÓA SAU 60S)</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">⏹ KHÓA CỔNG BỎ PHIẾU SỚM</button>
     </div>
 </div>
 
@@ -81,43 +87,113 @@
         document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
     }
 
+    // HIỂN THỊ DANH SÁCH CÓ Ô CHỌN VAI TRÒ HOẶC GỢI Ý CỦA SÁT THỦ 1,2,3
     socket.on('update_player_list', (list) => {
         document.getElementById('count').innerText = list.length;
         const container = document.getElementById('player-list');
-        container.innerHTML = list.map(p => `
-            <div class="player-item">
-                <span><b>${p.name}</b></span>
-                <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
-            </div>
-        `).join('');
+        
+        container.innerHTML = list.map(p => {
+            let roleSelectHTML = `
+                <select class="role-selector" data-id="${p.id}" style="width:110px; margin:0; padding:4px; font-size:12px;">
+                    <option value="PENDING" ${p.role==='PENDING'?'selected':''}>Chưa chia</option>
+                    <option value="POLICE" ${p.role==='POLICE'?'selected':''}>Cảnh Sát</option>
+                    <option value="ASSASSIN" ${p.role==='ASSASSIN'?'selected':''}>Sát Thủ</option>
+                </select>
+            `;
+            let clueStatus = p.role === 'ASSASSIN' ? `<br><small style="color:#ff6584">Gợi ý đã nhập: ${p.clue || 'Chưa nhập'}</small>` : '';
+
+            return `
+                <div class="player-item">
+                    <div>
+                        <span><b>${p.name}</b> [${p.isAlive?'SỐNG':'CHẾT'}]</span>
+                        ${clueStatus}
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        ${roleSelectHTML}
+                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     });
 
-    function kickPlayer(socketId) { if(confirm("Xóa người chơi này?")) { socket.emit('kick_player_by_admin', socketId); } }
-    function startGame() { socket.emit('start_game'); alert("Đã phát vai trò ngẫu nhiên!"); }
+    function kickPlayer(socketId) { if(confirm("Xóa người chơi khỏi bàn?")) { socket.emit('kick_player_by_admin', socketId); } }
+
+    // GỬI CHỈ ĐỊNH VAI TRÒ
+    function submitAssignedRoles() {
+        const selectors = document.querySelectorAll('.role-selector');
+        let assignedList = [];
+        let totalAssassins = 0;
+
+        selectors.forEach(sel => {
+            let roleVal = sel.value;
+            assignedList.push({ id: sel.getAttribute('data-id'), role: roleVal });
+            if(roleVal === 'ASSASSIN') totalAssassins++;
+        });
+
+        // Nếu admin không chọn vai trò nào cả, ra lệnh cho server tự động chạy ngẫu nhiên
+        if(totalAssassins === 0) {
+            socket.emit('start_game');
+        } else {
+            socket.emit('admin_assign_roles', assignedList);
+            alert("Đã phân phát và gửi vai trò chỉ định xuống máy người chơi!");
+        }
+    }
     
     function triggerMinigame() {
         if(!currentQData) return alert("Vui lòng lựa chọn câu hỏi mẫu trước!");
         socket.emit('host_trigger_minigame', { id: Date.now(), type: currentQData.type, question: currentQData.q, correctAnswer: currentQData.a, options: currentQData.options || [] });
         
         if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('btn-stop-q').style.display = 'block';
         const timerBox = document.getElementById('admin-timer');
         timerBox.style.display = 'block';
         let timeLeft = 60;
 
         adminTimerInterval = setInterval(() => {
             timeLeft--;
-            timerBox.innerText = `⏳ ĐANG TRONG THỜI GIAN TRẢ LỜI: ${timeLeft}s`;
-            if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; }
+            timerBox.innerText = `⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: ${timeLeft}s`;
+            if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; document.getElementById('btn-stop-q').style.display = 'none';}
         }, 1000);
     }
 
-    function openVoteRound() { socket.emit('open_vote_round'); alert("Đã mở cổng bỏ phiếu!"); }
+    function forceEndMinigame() { socket.emit('admin_force_end_minigame'); }
+
+    // MỞ CỔNG BÌNH CHỌN 60 GIÂY VÀ ĐẾM NGƯỢC TRÊN MÁY ADMIN
+    function openVoteRound() {
+        socket.emit('admin_open_vote_round');
+        
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('btn-stop-v').style.display = 'block';
+        const voteTimerBox = document.getElementById('admin-vote-timer');
+        voteTimerBox.style.display = 'block';
+        let voteTimeLeft = 60;
+        voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
+
+        adminTimerInterval = setInterval(() => {
+            voteTimeLeft--;
+            voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
+            if(voteTimeLeft <= 0) { clearInterval(adminTimerInterval); voteTimerBox.style.display = 'none'; document.getElementById('btn-stop-v').style.display = 'none';}
+        }, 1000);
+    }
+
+    function forceEndVote() { socket.emit('admin_force_end_vote'); }
+
     socket.on('minigame_ended', (winners) => {
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-timer').style.display = 'none';
-        alert(`KẾT THÚC! Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không có ai trả lời đúng!'}`);
+        document.getElementById('btn-stop-q').style.display = 'none';
+        alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai trả lời đúng!'}`);
     });
-    socket.on('vote_result_announced', (data) => alert(`KẾT QUẢ VOTE:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> HỆ THỐNG QUÉT: ${data.hasAssassin ? 'CÓ SÁT THỦ! 🩸' : 'AN TOÀN. 🛡️'}`));
+
+    socket.on('player_died', (data) => alert(`HỆ THỐNG: Mật vụ [ ${data.victimName} ] đã trúng độc tử trận!`));
+    
+    socket.on('vote_result_announced', (data) => {
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('admin-vote-timer').style.display = 'none';
+        document.getElementById('btn-stop-v').style.display = 'none';
+        alert(`KẾT QUẢ VOTE ROUND:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> HỆ THỐNG QUÉT: ${data.hasAssassin ? 'CÓ SÁT THỦ TRONG TOP 5! 🩸' : 'AN TOÀN, KHÔNG CÓ SÁT THỦ. 🛡️'}`);
+    });
 </script>
 </body>
 </html>
