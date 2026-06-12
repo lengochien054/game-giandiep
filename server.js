@@ -20,13 +20,13 @@ let minigameAnswers = [];
 
 let voteTimeout = null;
 let voteActive = false;
-let currentVotes = []; // Lưu danh sách phiếu [{voterId, targetId, votesCount}]
+let currentVotes = []; 
 
 io.on('connection', (socket) => {
     console.log(`Kết nối: ${socket.id}`);
     
-    // Gửi danh sách cập nhật ngay lập tức cho tất cả các máy bao gồm cả Admin
-    io.emit('update_player_list', Object.values(players));
+    // Gửi danh sách cho thiết bị mới vào phòng
+    socket.emit('update_player_list', Object.values(players));
 
     socket.on('join_game', (data) => {
         players[socket.id] = {
@@ -48,26 +48,42 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ADMIN THỦ CÔNG CHỈ ĐỊNH VAI TRÒ HOẶC CHO CHẠY TỰ ĐỘNG
-    socket.on('admin_assign_roles', (assignedList) => {
-        // assignedList mẫu: [{id: '...', role: 'ASSASSIN'}, {id: '...', role: 'POLICE'}]
-        assignedList.forEach(item => {
-            if (players[item.id]) {
-                players[item.id].role = item.role;
-                // Bắn vai trò bí mật về máy cá nhân đó
-                io.to(item.id).emit('receive_role', { role: item.role });
+    // XỬ LÝ CHỈ ĐỊNH ĐÍCH DANH 3 SÁT THỦ VÀ GỢI Ý TỪ ADMIN
+    socket.on('admin_assign_roles', (data) => {
+        // data mẫu: { assassins: [ {id, clue}, {id, clue}, {id, clue} ] }
+        const assassinIds = data.assassins.map(as => as.id).filter(id => id !== "");
+
+        // Reset lại toàn bộ vai trò phòng về mặc định trước khi chia
+        Object.keys(players).forEach(id => {
+            players[id].role = "POLICE";
+            players[id].clue = "";
+        });
+
+        // Áp đặt cấu hình Sát thủ
+        data.assassins.forEach(as => {
+            if (as.id && players[as.id]) {
+                players[as.id].role = "ASSASSIN";
+                players[as.id].clue = as.clue;
             }
         });
-        // Cập nhật lại sơ đồ danh sách hiển thị cho Admin biết
-        io.emit('update_player_list', Object.values(players));
-    });
 
-    socket.on('submit_clue', (clueText) => {
-        if (players[socket.id] && players[socket.id].role === "ASSASSIN") {
-            players[socket.id].clue = clueText;
-            socket.emit('clue_saved');
-            io.emit('update_player_list', Object.values(players)); // Đồng bộ cho Admin thấy đã nhập gợi ý
-        }
+        // Bắn thông báo nội dung chuẩn xác cho từng thiết bị người chơi
+        Object.keys(players).forEach(id => {
+            if (players[id].role === "ASSASSIN") {
+                io.to(id).emit('receive_role', { 
+                    role: "ASSASSIN", 
+                    message: `Bạn là sát thủ, hãy nhanh chóng bắn thật nhiều cảnh sát. Gợi ý về bạn là: ${players[id].clue}`
+                });
+            } else {
+                io.to(id).emit('receive_role', { 
+                    role: "POLICE", 
+                    message: "Xin chào cảnh sát, hãy mau chóng tìm ra sát thủ trước khi bị loại"
+                });
+            }
+        });
+
+        // Đồng bộ lại sơ đồ hiển thị cho Admin
+        io.emit('update_player_list', Object.values(players));
     });
 
     socket.on('assassinate_player', (targetId) => {
@@ -83,7 +99,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // LUỒNG MINI-GAME CÓ THỜI GIAN ĐẾM NGƯỢC
     socket.on('host_trigger_minigame', (data) => {
         if (minigameTimeout) clearTimeout(minigameTimeout);
         minigameActive = true;
@@ -113,7 +128,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ĐÓNG MINI-GAME VÀ PHÂN PHÁT PHẦN THƯỞNG CHI TIẾT ĐÚNG / SAI
     socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
 
     function endMinigame() {
@@ -132,10 +146,9 @@ io.on('connection', (socket) => {
                         message: `🏆 TOP ${index+1} XUẤT SẮC! Hệ thống cấp Đạn: Hãy chọn 1 người sống bên dưới bàn tiệc, sau khi cụng ly / hô bia xong hãy bấm nút Kích hoạt để hạ sát họ ngầm!` 
                     });
                 } else {
-                    // Cảnh sát thắng: Gom toàn bộ manh mối của các Sát thủ đã nhập
                     const assassins = Object.values(players).filter(pl => pl.role === "ASSASSIN" && pl.clue);
                     let cluesList = assassins.map((as, i) => `Sát thủ ${i+1}: "${as.clue}"`).join("<br>");
-                    if(!cluesList) cluesList = "Sát thủ chưa khai báo manh mối hoặc giấu kín.";
+                    if(!cluesList) cluesList = "Sát thủ giấu kín, hệ thống chưa quét được manh mối.";
 
                     targetSocket.emit('receive_reward', { 
                         type: 'CLUE', 
@@ -149,21 +162,16 @@ io.on('connection', (socket) => {
         io.emit('force_close_question');
     }
 
-    // LUỒNG BÌNH CHỌN 60 GIÂY TỰ ĐỘNG KHÓA CỔNG
     socket.on('admin_open_vote_round', () => {
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
         currentVotes = [];
-
-        // Phát tín hiệu mở giao diện kèm thời gian lùi số 60s cho người chơi
         io.emit('open_vote_round', { duration: 60 });
-
         voteTimeout = setTimeout(() => { if (voteActive) endVoteRound(); }, 60000);
     });
 
     socket.on('submit_votes_round', (votesArray) => {
         if (!voteActive) return;
-        // votesArray mẫu: [{targetId: '...', votes: 1}]
         currentVotes = currentVotes.concat(votesArray);
     });
 
@@ -181,9 +189,9 @@ io.on('connection', (socket) => {
         
         io.emit('vote_result_announced', { 
             hasAssassin: hasAssassin, 
-            top5Names: top5.map(id => players[id] ? players[id].name : "Nghi phạm ẩn danh") 
+            top5Names: top5.map(id => players[id] ? players[id].name : "Ẩn danh") 
         });
-        io.emit('force_close_vote_screen'); // Ép máy người chơi đóng màn hình bầu chọn
+        io.emit('force_close_vote_screen');
     }
 
     socket.on('disconnect', () => {
@@ -193,4 +201,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Hệ thống ổn định tại port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Hệ thống chạy mượt tại port ${PORT}`); });
