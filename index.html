@@ -9,7 +9,7 @@
         :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --text-sub: #8892b0; --cyan-tech: #64ffda; --alert-red: #ff6584; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-        .container { width: 100%; max-width: 450px; background: var(--bg-card); border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; }
+        .container { width: 100%; max-width: 450px; background: var(--bg-card); border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; position: relative; }
         .screen { display: none; }
         .screen.active { display: block; }
         h2 { color: var(--cyan-tech); font-size: 22px; margin-bottom: 16px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
@@ -23,9 +23,12 @@
         .vote-item { background: #0a192f; padding: 14px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #233554; display: flex; justify-content: space-between; align-items: center; }
         .vote-item input[type="radio"] { transform: scale(1.4); accent-color: var(--cyan-tech); cursor: pointer; }
         .status-box { background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); padding: 15px; border-radius: 6px; color: var(--alert-red); text-align: center; font-weight: bold; margin-bottom: 15px; }
-        .reward-box { background: rgba(100, 255, 218, 0.1); border: 1px solid var(--cyan-tech); padding: 15px; border-radius: 6px; color: #fff; margin-top: 15px; border: 1px solid var(--cyan-tech); font-size: 14px; line-height: 1.5; }
+        
+        /* BẢNG PHẦN THƯỞNG ĐỒNG BỘ HIỂN THỊ ĐỨNG IM */
+        .reward-overlay { display: none; background: #112240; border: 2px solid var(--cyan-tech); padding: 15px; border-radius: 8px; color: #fff; margin-top: 15px; font-size: 14px; line-height: 1.5; position: relative; }
         .feedback-box { text-align: center; font-size: 18px; font-weight: bold; margin-top: 10px; padding: 10px; border-radius: 6px; }
         .timer-box { text-align: center; font-size: 18px; color: var(--alert-red); font-weight: bold; margin-bottom: 15px; background: rgba(255,101,132,0.1); padding: 10px; border-radius: 6px; border: 1px solid var(--alert-red); }
+        .btn-close-reward { padding: 6px 12px; font-size: 12px; border-color: var(--text-sub); color: var(--text-sub); width: auto; display: block; margin: 10px auto 0 auto; }
     </style>
 </head>
 <body>
@@ -42,7 +45,11 @@
     <div id="screen-role" class="screen">
         <h2>Danh Tính Bí Mật</h2>
         <div id="role-text-box" style="font-size:16px; font-weight:500; line-height:1.6; margin-bottom:20px; text-align:center; padding:10px;"></div>
-        <div id="live-rewards"></div>
+        
+        <div id="reward-display-box" class="reward-overlay">
+            <div id="reward-content"></div>
+            <button class="btn-close-reward" onclick="closeRewardOverlay()">ĐÓNG BẢNG GỢI Ý</button>
+        </div>
     </div>
 
     <div id="screen-minigame" class="screen">
@@ -96,19 +103,13 @@
     socket.on('kicked_by_admin', () => { window.location.reload(); });
     socket.on('update_player_list', (list) => { allPlayers = list; });
 
-    // NHẬN THÔNG BÁO VAI TRÒ CHUẨN VĂN PHONG YÊU CẦU
     socket.on('receive_role', (data) => {
         myIdentity.role = data.role; 
         myIdentity.id = socket.id;
         
         const textBox = document.getElementById('role-text-box');
-        textBox.innerHTML = data.message; // In chuẩn đoạn text từ Server gửi xuống
-
-        if(data.role === 'ASSASSIN') {
-            textBox.style.color = '#ff6584'; // Đỏ kịch tính cho sát thủ
-        } else {
-            textBox.style.color = '#64ffda'; // Xanh công nghệ cho cảnh sát
-        }
+        textBox.innerHTML = data.message;
+        textBox.style.color = (data.role === 'ASSASSIN') ? '#ff6584' : '#64ffda';
         showScreen('screen-role');
     });
 
@@ -149,11 +150,9 @@
     socket.on('minigame_feedback', (data) => {
         const fb = document.getElementById('minigame-feedback');
         if(data.isCorrect) {
-            fb.innerText = "✓ ĐÚNG RỒI! Hệ thống đang quét bảng xếp hạng tốc độ.";
-            fb.style.backgroundColor = "rgba(100, 255, 218, 0.1)"; fb.style.color = "#64ffda";
+            fb.innerText = "✓ CHÍNH XÁC!"; fb.style.backgroundColor = "rgba(100, 255, 218, 0.1)"; fb.style.color = "#64ffda";
         } else {
-            fb.innerText = "✕ SAI MẤT RỒI! Hãy chờ câu hỏi kế tiếp từ Quản trò.";
-            fb.style.backgroundColor = "rgba(255, 101, 132, 0.1)"; fb.style.color = '#ff6584';
+            fb.innerText = "✕ SAI MẤT RỒI!"; fb.style.backgroundColor = "rgba(255, 101, 132, 0.1)"; fb.style.color = '#ff6584';
         }
     });
 
@@ -162,23 +161,37 @@
         showScreen('screen-role');
     });
 
+    // LỆNH TỰ ĐỘNG KHÓA BẢNG TỪ SERVER KHI ADMIN ĐỔI VÒNG CHƠI MỚI
+    socket.on('close_all_overlays', () => { closeRewardOverlay(); });
+
+    function closeRewardOverlay() {
+        document.getElementById('reward-display-box').style.display = 'none';
+    }
+
     function submitAnswerText() { socket.emit('submit_minigame_answer', document.getElementById('minigame-answer').value); showScreen('screen-role'); }
     function submitAnswerABCD(charChoice) { socket.emit('submit_minigame_answer', charChoice); showScreen('screen-role'); }
 
+    // RENDER BẢNG PHẦN THƯỞNG ĐỨNG IM THEO ĐÚNG YÊU CẦU
     socket.on('receive_reward', (reward) => {
         if(!myIdentity.isAlive) return;
-        const container = document.getElementById('live-rewards');
+        showScreen('screen-role'); // Đảm bảo người chơi đang đứng ở màn hình chính để đọc
+        
+        const overlay = document.getElementById('reward-display-box');
+        const content = document.getElementById('reward-content');
+        overlay.style.display = 'block';
+
         if(reward.type === 'CLUE') { 
-            container.innerHTML = `<div class="reward-box" style="border-color:#64ffda; color:#64ffda;">${reward.message}</div>` + container.innerHTML; 
+            overlay.style.borderColor = '#64ffda';
+            content.innerHTML = reward.message; 
         }
         else if(reward.type === 'KILL_SKILL') {
+            overlay.style.borderColor = '#ff6584';
             let options = allPlayers.filter(p => p.id !== socket.id && p.isAlive).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            container.innerHTML = `
-                <div class="reward-box" style="border-color:#ff6584;">
-                    <p style="color:#ff6584; font-weight:bold; margin-bottom:8px;">${reward.message}</p>
-                    <select id="kill-target">${options}</select>
-                    <button style="border-color:#ff6584; color:#ff6584; padding:6px;" onclick="executeKill()">BẤM ĐỂ HẠ SÁT MỤC TIÊU</button>
-                </div>` + container.innerHTML;
+            content.innerHTML = `
+                <p style="color:#ff6584; font-weight:bold; margin-bottom:8px;">${reward.message}</p>
+                <select id="kill-target" style="margin-top:10px;">${options}</select>
+                <button style="border-color:#ff6584; color:#ff6584; padding:6px; font-size:14px;" onclick="executeKill()">XÁC NHẬN HẠ SÁT CẢNH SÁT</button>
+            `;
         }
     });
 
@@ -186,16 +199,20 @@
         const targetId = document.getElementById('kill-target').value;
         if(!targetId) return;
         socket.emit('assassinate_player', targetId);
+        closeRewardOverlay();
     }
 
     socket.on('you_are_dead', () => { myIdentity.isAlive = false; showScreen('screen-dead'); });
+    socket.on('player_died', (data) => { alert(`⚠️ THÔNG BÁO TIỆC: Người chơi [ ${data.victimName} ] đã trúng độc và bị LOẠI khỏi cuộc chơi!`); });
 
+    // SỬA LỖI HIỂN THỊ DANH SÁCH CỔNG BÌNH CHỌN 60S
     socket.on('open_vote_round', (data) => {
         if(!myIdentity.isAlive) return;
         if(gameTimerInterval) clearInterval(gameTimerInterval);
 
         const listContainer = document.getElementById('global-vote-list');
-        listContainer.innerHTML = allPlayers.filter(p => p.isAlive && p.id !== socket.id).map(p => `
+        // Sử dụng danh sách người chơi sạch do Server cung cấp thẳng realtime
+        listContainer.innerHTML = data.playerList.filter(p => p.isAlive && p.id !== socket.id).map(p => `
             <div class="vote-item">
                 <label for="v-${p.id}">${p.name}</label>
                 <input type="radio" name="suspect" id="v-${p.id}" value="${p.id}">
@@ -226,7 +243,7 @@
         socket.emit('submit_votes_round', [{ targetId: selected.value, votes: (1 + myIdentity.stolenVotes) }]);
         if(gameTimerInterval) clearInterval(gameTimerInterval);
         showScreen('screen-role');
-        alert("Phiếu bầu bí mật của bạn đã gửi đi thành công!");
+        alert("Bỏ phiếu thành công!");
     }
 
     socket.on('game_over_announced', (data) => alert(`TRÒ CHƠI KẾT THÚC!\nPhe thắng: ${data.winnerPhe === 'POLICE' ? 'CẢNH SÁT 🛡️' : 'SÁT THỦ 🩸'}`));
