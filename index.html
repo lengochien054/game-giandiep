@@ -164,6 +164,27 @@
     let myIdentity = { id: '', name: '', role: '', isAlive: true, stolenVotes: 0 };
     let allPlayers = [];
 
+    // KIỂM TRA ĐƯỜNG DẪN ADMIN NGAY LẬP TỨC VÀ ÉP GIAO DIỆN HIỂN THỊ
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = (urlParams.get('admin') === 'true');
+
+    // Hàm đổi màn hình bắt buộc phải khai báo trước
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const targetScreen = document.getElementById(screenId);
+        if (targetScreen) {
+            targetScreen.classList.add('active');
+        }
+    }
+
+    // Đợi giao diện HTML load xong hoàn toàn sẽ bẻ luồng sang giao diện Admin ngay
+    document.addEventListener("DOMContentLoaded", function() {
+        if (isAdmin) {
+            showScreen('screen-admin');
+            console.log("Hệ thống nhận diện quyền Quản Trò.");
+        }
+    });
+
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
