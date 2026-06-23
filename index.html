@@ -3,86 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Gián Điệp - Người Chơi</title>
+    <title>Mật Mã Bí Mật - Kẻ Giả Mạo</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #eef2f7; text-align: center; }
-        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: inline-block; min-width: 300px; margin-top: 50px; }
-        input { padding: 10px; width: 80%; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
-        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        .hidden { display: none; }
-        .player-list { list-style-type: none; padding: 0; text-align: left; }
-        .player-item { padding: 8px 12px; background: #f8f9fa; margin-bottom: 5px; border-radius: 4px; border-left: 4px solid #007bff; }
+        :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --text-sub: #8892b0; --cyan-tech: #64ffda; --alert-red: #ff6584; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+        .container { width: 100%; max-width: 450px; background: var(--bg-card); border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; position: relative; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        h2 { color: var(--cyan-tech); font-size: 22px; margin-bottom: 16px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        p { color: var(--text-sub); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 14px; background: #0a192f; border: 1px solid #233554; border-radius: 6px; color: #fff; font-size: 16px; margin-bottom: 15px; outline: none; }
+        input[type="text"]:focus { border-color: var(--cyan-tech); }
+        button { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--cyan-tech); color: var(--cyan-tech); border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
+        button:hover { background: rgba(100, 255, 218, 0.1); }
+        .vote-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; background: #0a192f; padding: 10px; border-radius: 6px; border: 1px solid #233554; }
+        .vote-item { background: var(--bg-card); padding: 12px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #233554; display: flex; flex-direction: column; gap: 5px; color: #fff;}
+        .vote-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .vote-item input[type="checkbox"] { transform: scale(1.5); accent-color: var(--cyan-tech); cursor: pointer; }
+        .timer-box { text-align: center; font-size: 18px; color: var(--alert-red); font-weight: bold; margin-bottom: 15px; background: rgba(255,101,132,0.1); padding: 10px; border-radius: 6px; border: 1px solid var(--alert-red); }
+        .badge-spy { color: var(--alert-red); background: rgba(255,101,132,0.1); padding: 4px 10px; border-radius: 4px; font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 15px; border: 1px solid var(--alert-red); }
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #233554; font-size: 15px; }
     </style>
 </head>
 <body>
-
-    <div id="login-screen" class="box">
-        <h2>Tham Gia Trò Chơi</h2>
-        <input type="text" id="username" placeholder="Nhập biệt danh của bạn..." maxlength="20">
-        <br>
-        <button onclick="joinGame()">Vào Phòng</button>
+<div class="container">
+    
+    <div id="screen-lobby" class="screen active">
+        <h2>Hệ Thống Kẻ Giả Mạo</h2>
+        <p>Vui lòng nhập họ tên chính xác để ban ban điều phối tính toán xếp hạng điểm số.</p>
+        <input type="text" id="username" placeholder="Nhập Họ và Tên của bạn...">
+        <button onclick="joinGame()">Kết Nối Hệ Thống</button>
+        <div id="waiting-msg" style="display:none; text-align:center; margin-top:15px; color:var(--cyan-tech);">📡 Đang kết nối mạng lưới ổn định. Chờ quản trò chia lượt mới...</div>
     </div>
 
-    <div id="lobby-screen" class="box hidden">
-        <h2>Phòng Chờ Gián Điệp</h2>
-        <p style="color: #666;">Xin chào, <strong id="my-name" style="color: #007bff;"></strong>!</p>
-        <hr>
-        <h3>Người chơi khác trong phòng (<span id="count">0</span>)</h3>
-        <ul id="players" class="player-list">
-            </ul>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+    <div id="screen-word" class="screen">
+        <h2>Từ Khóa Bí Mật</h2>
+        <div id="word-message-box" style="font-size:16px; line-height:1.6; margin-bottom:20px; text-align:center; padding:10px; font-weight: bold;"></div>
         
-        const loginScreen = document.getElementById('login-screen');
-        const lobbyScreen = document.getElementById('lobby-screen');
-        const myNameEl = document.getElementById('my-name');
-        const playerListEl = document.getElementById('players');
-        const countEl = document.getElementById('count');
+        <div id="area-desc-input">
+            <div id="desc-timer" class="timer-box">⏱️ Thời gian nhập mô tả: 60s</div>
+            <p style="font-size: 13px; color: #8892b0;">Nhập 1-2 cụm từ mô tả tính chất từ khóa bí mật của bạn:</p>
+            <input type="text" id="user-desc-text" placeholder="Gõ mô tả vào đây...">
+            <button onclick="submitDescription()">XÁC NHẬN NỘP MÔ TẢ</button>
+        </div>
+        <div id="desc-submitted-msg" style="display:none; color: var(--cyan-tech); text-align: center; font-weight: bold;">✓ Đã nộp mô tả lên hệ thống trung tâm! Đợi mọi người gõ xong...</div>
+    </div>
 
-        // Hàm xử lý khi nhấn nút "Vào Phòng"
-        function joinGame() {
-            const username = document.getElementById('username').value.trim();
-            
-            if (!username) {
-                alert("Vui lòng nhập biệt danh trước khi vào phòng!");
-                return;
-            }
+    <div id="screen-vote" class="screen">
+        <h2>Bỏ Phiếu Thanh Trừng</h2>
+        <div id="vote-timer" class="timer-box">⏱️ Thời gian bỏ phiếu: 60s</div>
+        <div id="spy-alert-config" class="badge-spy">Vòng này cấu hình: Có 5 Gián Điệp ẩn mình!</div>
+        <p style="font-size: 13px; color: #8892b0; margin-bottom: 10px; text-align: center;" id="vote-instruction">Hãy tích chọn chính xác 5 người gán nghi vấn:</p>
+        <div class="vote-list" id="global-vote-list"></div>
+        <button onclick="submitVote()">XÁC NHẬN GỬI PHIẾU BẦU</button>
+    </div>
 
-            // Gửi sự kiện lên Server báo danh tính người chơi tham gia
-            socket.emit('joinGame', username);
+    <div id="screen-summary" class="screen">
+        <h2 style="color: var(--cyan-tech);">🏆 BẢNG VÀNG ĐIỂM SỐ</h2>
+        <p style="text-align: center;">Danh sách xếp hạng tổng kết giải đấu từ cao xuống thấp:</p>
+        <div id="leaderboard-box" style="background:#0a192f; border-radius:6px; padding:10px; max-height:300px; overflow-y:auto; border:1px solid #233554;"></div>
+    </div>
+</div>
 
-            // Chuyển đổi giao diện màn hình
-            myNameEl.innerText = username;
-            loginScreen.classList.add('hidden');
-            lobbyScreen.classList.remove('hidden');
+<script>
+    const socket = io();
+    let myIdentity = { id:'', name: '', role: 'PENDING', score: 0 };
+    let requiredSelectSpies = 5;
+    let timerInterval = null;
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        if(document.getElementById(screenId)) document.getElementById(screenId).classList.add('active');
+    }
+
+    function joinGame() {
+        const name = document.getElementById('username').value;
+        if(!name) return alert('Hãy nhập tên!');
+        myIdentity.name = name;
+        socket.emit('join_game', { name: name });
+        document.getElementById('username').style.display = 'none';
+        document.querySelector('#screen-lobby button').style.display = 'none';
+        document.getElementById('waiting-msg').style.display = 'block';
+    }
+
+    socket.on('kicked_by_admin', () => { window.location.reload(); });
+    socket.on('update_player_list', (list) => { 
+        const me = list.find(p => p.id === socket.id);
+        if(me) myIdentity.score = me.score;
+    });
+
+    socket.on('announce_spy_config', (data) => {
+        requiredSelectSpies = data.spyCount;
+        document.getElementById('spy-alert-config').innerText = `Vòng này cấu hình: Có ${requiredSelectSpies} Gián Điệp ẩn mình!`;
+        document.getElementById('vote-instruction').innerText = `Hãy tích chọn chính xác ${requiredSelectSpies} người bạn nghi ngờ nhất:`;
+    });
+
+    // NHẬN TỪ KHÓA LƯỢT MỚI
+    socket.on('receive_word_package', (data) => {
+        myIdentity.role = data.role;
+        const msgBox = document.getElementById('word-message-box');
+        msgBox.innerHTML = data.message;
+        msgBox.style.color = (data.role === 'SPY') ? '#ff6584' : '#64ffda';
+        
+        document.getElementById('area-desc-input').style.display = 'block';
+        document.getElementById('desc-submitted-msg').style.display = 'none';
+        document.getElementById('user-desc-text').value = '';
+        showScreen('screen-word');
+    });
+
+    socket.on('start_desc_phase', (data) => {
+        if(timerInterval) clearInterval(timerInterval);
+        let timeLeft = data.duration || 60;
+        const display = document.getElementById('desc-timer');
+        display.innerText = `⏱️ Thời gian nhập mô tả: ${timeLeft}s`;
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            display.innerText = `⏱️ Thời gian nhập mô tả: ${timeLeft}s`;
+            if(timeLeft <= 0) { clearInterval(timerInterval); }
+        }, 1000);
+    });
+
+    function submitDescription() {
+        const text = document.getElementById('user-desc-text').value;
+        if(!text) return alert("Vui lòng nhập câu mô tả!");
+        socket.emit('submit_description', text);
+        document.getElementById('area-desc-input').style.display = 'none';
+        document.getElementById('desc-submitted-msg').style.display = 'block';
+    }
+
+    socket.on('force_close_desc_phase', () => {
+        if(timerInterval) clearInterval(timerInterval);
+        document.getElementById('area-desc-input').style.display = 'none';
+        document.getElementById('desc-submitted-msg').style.display = 'block';
+    });
+
+    // NHẬN LỆNH MỞ CỔNG BÌNH CHỌN 60 GIÂY VÀ RENDER DANH SÁCH
+    socket.on('open_vote_round', (data) => {
+        if(timerInterval) clearInterval(timerInterval);
+        
+        const listContainer = document.getElementById('global-vote-list');
+        listContainer.innerHTML = data.playerList.filter(p => p.id !== socket.id).map(p => `
+            <div class="vote-item">
+                <div class="vote-row">
+                    <span style="font-weight:bold; color:#64ffda;">${p.name}</span>
+                    <input type="checkbox" name="suspect" class="vote-checkbox" value="${p.id}">
+                </div>
+                <div style="font-size:13px; color:#8892b0; margin-top:3px; font-style:italic;">Mô tả: "${p.desc}"</div>
+            </div>
+        `).join('');
+
+        let timeLeft = data.duration || 60;
+        const display = document.getElementById('vote-timer');
+        display.innerText = `⏱️ Thời gian bỏ phiếu: ${timeLeft}s`;
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            display.innerText = `⏱️ Thời gian bỏ phiếu: ${timeLeft}s`;
+            if(timeLeft <= 0) { clearInterval(timerInterval); }
+        }, 1000);
+
+        showScreen('screen-vote');
+    });
+
+    function submitVote() {
+        const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
+        if(checkedBoxes.length !== requiredSelectSpies) {
+            return alert(`Luật ép buộc vòng này bạn phải tích chọn chính xác ${requiredSelectSpies} người! (Bạn đang chọn ${checkedBoxes.length} người)`);
         }
 
-        // Lắng nghe sự kiện cập nhật danh sách người chơi từ server phát ra
-        socket.on('updatePlayerList', (playerList) => {
-            playerListEl.innerHTML = '';
-            countEl.innerText = playerList.length;
+        let chosenIds = [];
+        checkedBoxes.forEach(box => chosenIds.push(box.value));
 
-            playerList.forEach(player => {
-                const li = document.createElement('li');
-                li.className = 'player-item';
-                // Đánh dấu nếu là chính mình để dễ nhìn
-                const isMe = player.id === socket.id ? " (Bạn)" : "";
-                li.innerHTML = `<strong>${player.name}</strong>${isMe}`;
-                playerListEl.appendChild(li);
-            });
-        });
+        socket.emit('submit_votes_round', { voterId: socket.id, chosenIds: chosenIds });
+        if(timerInterval) clearInterval(timerInterval);
+        
+        showScreen('screen-word');
+        document.getElementById('word-message-box').innerHTML = `✓ Phiếu bầu đã gửi đi ẩn danh!<br>Số điểm hiện tại tích lũy của bạn: <span style='color:#64ffda;'>${myIdentity.score} Điểm</span>`;
+        document.getElementById('area-desc-input').style.display = 'none';
+        document.getElementById('desc-submitted-msg').style.display = 'none';
+    }
 
-        // QUAN TRỌNG: Lắng nghe sự kiện bị Quản trò xóa (Kicked)
-        socket.on('youAreKicked', () => {
-            alert('Bạn đã bị Quản trò xóa khỏi phòng game (Có thể do nhập sai thông tin)!');
-            
-            // Tải lại trang để đưa người chơi quay về màn hình đăng nhập ban đầu
-            window.location.reload(); 
-        });
-    </script>
+    socket.on('vote_round_ended', () => {
+        if(timerInterval) clearInterval(timerInterval);
+        alert(`Vòng bỏ phiếu đã khép lại! Server đã tự động cộng điểm tổng kết (+10 / -5). Chờ Quản trò xem kết quả hoặc mở lượt tiếp theo.`);
+    });
+
+    socket.on('force_close_vote_screen', () => { showScreen('screen-word'); });
+
+    // HIỂN THỊ BẢNG XẾP HẠNG CHUNG CUỘC TOÀN PHÒNG CHẠY REALTIME
+    socket.on('game_over_leaderboard', (leaderboard) => {
+        if(timerInterval) clearInterval(timerInterval);
+        const box = document.getElementById('leaderboard-box');
+        box.innerHTML = leaderboard.map((p, index) => `
+            <div class="leaderboard-item">
+                <span><b>${index + 1}. ${p.name}</b></span>
+                <span style="color:#64ffda; font-weight:bold;">${p.score} ĐIỂM</span>
+            </div>
+        `).join('');
+        showScreen('screen-summary');
+    });
+</script>
 </body>
 </html>
