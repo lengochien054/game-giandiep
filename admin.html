@@ -3,65 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Điều Khiển Quản Trò</title>
+    <title>Bàn Điều Phối Quản Trò - Luật Mới</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
-        h1 { color: #333; }
-        .player-list { list-style-type: none; padding: 0; max-width: 400px; }
-        .player-item { 
-            background: #fff; padding: 10px 15px; margin-bottom: 8px; 
-            border-radius: 4px; display: flex; justify-content: space-between; 
-            align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .kick-btn { 
-            background-color: #ff4d4d; color: white; border: none; 
-            padding: 6px 12px; border-radius: 4px; cursor: pointer; 
-        }
-        .kick-btn:hover { background-color: #cc0000; }
+        :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --purple-tech: #b388ff; --cyan-tech: #64ffda; --alert-red: #ff6584; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 550px; background: var(--bg-card); border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(2,12,27,0.7); border: 1px solid #233554; }
+        h2 { color: var(--purple-tech); text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .panel-box { border: 1px solid #233554; padding: 15px; margin-bottom: 15px; border-radius: 8px; background: #0a192f; }
+        .panel-title { font-weight: bold; color: var(--purple-tech); margin-bottom: 10px; font-size: 15px; }
+        button { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--purple-tech); color: var(--purple-tech); border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        button:hover { background: rgba(179, 136, 255, 0.1); }
+        .btn-start { border-color: var(--cyan-tech); color: var(--cyan-tech); margin-top: 10px; }
+        .btn-start:hover { background: rgba(100, 255, 218, 0.1); }
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; font-size: 14px;}
+        .btn-kick { width: auto; padding: 4px 8px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
+        input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
+        .btn-summary { border-color: gold; color: gold; margin-top: 15px; font-size: 16px; }
+        .btn-summary:hover { background: rgba(255, 215, 0, 0.1); }
     </style>
 </head>
 <body>
-
-    <h1>Quản lý phòng game - Gián Điệp</h1>
-    <h2>Danh sách người chơi đang tham gia (<span id="count">0</span>)</h2>
+<div class="container">
+    <h2>BÀN ĐIỀU PHỐI ĐIỂM SỐ</h2>
     
-    <ul id="players" class="player-list">
-        <!-- Danh sách người chơi sẽ tự động render ở đây -->
-    </ul>
+    <div class="panel-box">
+        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ VÀO PHÒNG KHẢO SÁT REALTIME (<span id="count">0</span>)</div>
+        <div id="player-list" style="max-height: 200px; overflow-y: auto;"></div>
+    </div>
 
-    <!-- Nhúng thư viện Socket.io client -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+    <div class="panel-box">
+        <div class="panel-title">⚔️ THIẾT LẬP LƯỢT ĐẤU MỚI</div>
+        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ THỜI GIAN GÕ MÔ TẢ: 60s</div>
+        
+        <input type="text" id="normal-word" placeholder="Từ khóa Người bình thường (Ví dụ: Tuổi trẻ)">
+        <input type="text" id="spy-word" placeholder="Từ khóa Gián điệp (Ví dụ: Thanh xuân)">
+        
+        <label style="font-size: 12px; color:#8892b0;">Số lượng Gián điệp lượt này (Mặc định: 5):</label>
+        <input type="number" id="spy-count" value="5" min="1" style="width:100%; padding:10px; background:var(--bg-card); border:1px solid #233554; color:#fff; border-radius:4px; margin-bottom:10px;">
+        
+        <button class="btn-start" onclick="startNewRound()">➔ PHÁT TỪ KHÓA LƯỢT MỚI</button>
+    </div>
 
-        // Báo cho server biết đây là kết nối từ Quản trò để lấy danh sách ban đầu
-        socket.emit('adminInit');
+    <div class="panel-box">
+        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU (60 GIÂY)</div>
+        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">⏳ CỔNG VOTE ĐANG MỞ: 60s</div>
+        <button onclick="openVoteRound()">MỞ CỔNG VOTE (TỰ ĐỘNG KHÓA SAU 60S)</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">⏹ CHỐT SỔ & TÍNH ĐIỂM SỚM</button>
+    </div>
 
-        const playerListEl = document.getElementById('players');
-        const countEl = document.getElementById('count');
+    <button class="btn-summary" onclick="triggerSummary()">🏆 TỔNG KẾT ĐIỂM & IN BẢNG XẾP HẠNG</button>
+</div>
 
-        // Lắng nghe sự kiện cập nhật danh sách người chơi từ server
-        socket.on('updatePlayerList', (playerList) => {
-            playerListEl.innerHTML = ''; // Xóa danh sách cũ hiển thị trên màn hình
-            countEl.innerText = playerList.length; // Cập nhật sĩ số
+<script>
+    const socket = io();
+    let adminTimerInterval = null;
 
-            playerList.forEach(player => {
-                const li = document.createElement('li');
-                li.className = 'player-item';
-                li.innerHTML = `
-                    <span><strong>${player.name}</strong> (ID: ${player.id.substring(0,5)})</span>
-                    <button class="kick-btn" onclick="kick('${player.id}')">Xóa</button>
-                `;
-                playerListEl.appendChild(li);
-            });
-        });
+    socket.on('update_player_list', (list) => {
+        document.getElementById('count').innerText = list.length;
+        const container = document.getElementById('player-list');
+        
+        container.innerHTML = list.map((p, index) => {
+            let roleLabel = p.role === 'PENDING' ? 'Chưa vào lượt' : p.role === 'SPY' ? 'Gián điệp 🩸' : 'Thành viên 🛡️';
+            let descSnippet = p.desc ? `<br><span style="color:var(--cyan-tech); font-size:12px;">↳ Mô tả: "${p.desc}"</span>` : '<br><span style="color:#8892b0; font-size:12px;">↳ Chưa nộp mô tả</span>';
+            
+            return `
+                <div class="player-item">
+                    <div>
+                        <span><b>${index + 1}. ${p.name}</b> <small style="color:gold;">(${p.score} Điểm)</small></span>
+                        <br><small style="color:#8892b0;">Vai trò lượt này: ${roleLabel}</small>
+                        ${descSnippet}
+                    </div>
+                    <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+                </div>
+            `;
+        }).join('');
+    });
 
-        // Hàm xử lý khi nhấn nút Xóa
-        function kick(playerId) {
-            if(confirm("Bạn có chắc chắn muốn xóa người chơi này không?")) {
-                socket.emit('kickPlayer', playerId);
-            }
+    socket.on('error_msg', (msg) => { alert(msg); });
+
+    function kickPlayer(socketId) { if(confirm("Xóa người chơi?")) { socket.emit('kick_player_by_admin', socketId); } }
+
+    function startNewRound() {
+        const nw = document.getElementById('normal-word').value;
+        const sw = document.getElementById('spy-word').value;
+        const sc = document.getElementById('spy-count').value;
+
+        if(!nw || !sw) return alert("Vui lòng nhập đủ từ khóa cho 2 phe!");
+
+        socket.emit('admin_start_new_round', { normalWord: nw, spyWord: sw, spyCount: sc });
+        
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        const timerBox = document.getElementById('admin-timer');
+        timerBox.style.display = 'block';
+        let timeLeft = 60;
+
+        adminTimerInterval = setInterval(() => {
+            timeLeft--;
+            timerBox.innerText = `⏳ THỜI GIAN GÕ MÔ TẢ: ${timeLeft}s`;
+            if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; }
+        }, 1000);
+        alert("Đã mở cổng phát từ khóa lượt mới!");
+    }
+
+    function openVoteRound() {
+        socket.emit('admin_open_vote_round');
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('btn-stop-v').style.display = 'block';
+        const voteTimerBox = document.getElementById('admin-vote-timer');
+        voteTimerBox.style.display = 'block';
+        let voteTimeLeft = 60;
+
+        adminTimerInterval = setInterval(() => {
+            voteTimeLeft--;
+            voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
+            if(voteTimeLeft <= 0) { clearInterval(adminTimerInterval); voteTimerBox.style.display = 'none'; document.getElementById('btn-stop-v').style.display = 'none';}
+        }, 1000);
+    }
+
+    function forceEndVote() { socket.emit('admin_force_end_vote'); }
+
+    socket.on('minigame_ended', () => { if(adminTimerInterval) clearInterval(adminTimerInterval); document.getElementById('admin-timer').style.display = 'none'; });
+    
+    socket.on('vote_result_announced', (data) => {
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('admin-vote-timer').style.display = 'none';
+        document.getElementById('btn-stop-v').style.display = 'none';
+        alert(`LƯỢT ĐẤU KHÉP LẠI!\nTop 5 nghi phạm bị vote nhiều nhất: ${data.top5Names.join(', ')}\n-> KẾT QUẢ QUÉT: ${data.hasAssassin ? 'CÓ GIÁN ĐIỆP TRONG TOP 5! 🩸' : 'AN TOÀN, KHÔNG CÓ GIÁN ĐIỆP. 🛡️'}`);
+    });
+
+    function triggerSummary() {
+        if(confirm("Bạn có chắc chắn muốn kết thúc giải đấu để xuất bảng tổng kết điểm số không?")) {
+            socket.emit('admin_trigger_summary');
         }
-    </script>
+    }
+</script>
 </body>
 </html>
