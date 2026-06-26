@@ -98,9 +98,9 @@
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU NGHI PHẠM (60 GIÂY)</div>
+        <div class="panel-title">🗳️ VOTE CUỐI GAME - BỎ PHIẾU NGHI PHẠM (60 GIÂY)</div>
         <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">⏳ CỔNG VOTE ĐANG MỞ: 60s</div>
-        <button onclick="openVoteRound()">MỞ CỔNG VOTE (TỰ ĐỘNG KHÓA SAU 60S)</button>
+        <button onclick="openVoteRound()">MỞ VOTE CUỐI GAME (CHỈ 1 LẦN)</button>
         <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">⏹ KHÓA CỔNG BỎ PHIẾU SỚM</button>
     </div>
 </div>
@@ -332,12 +332,19 @@
         alert(`Đã thêm ${data.addedHints} gợi ý. Còn ${data.remainingHints} gợi ý chưa hiển thị.`);
     });
 
+    socket.on('vote_already_used', () => {
+        if(adminTimerInterval) clearInterval(adminTimerInterval);
+        document.getElementById('admin-vote-timer').style.display = 'none';
+        document.getElementById('btn-stop-v').style.display = 'none';
+        alert("Vote cuối game đã được mở/kết thúc rồi, không thể mở lại.");
+    });
+
     socket.on('vote_result_announced', (data) => {
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-vote-timer').style.display = 'none';
         document.getElementById('btn-stop-v').style.display = 'none';
         const topNames = (data.top1Names || data.top5Names || []).join(', ');
-        alert(`KẾT QUẢ VOTE ROUND:\nTop 1 lượt vote: ${topNames}\n-> ${data.hasAssassin ? 'Sát thủ trong top 1 đã bị loại!' : 'Top 1 không phải sát thủ, không ai bị loại.'}`);
+        alert(`KẾT QUẢ VOTE CUỐI GAME:\nTop 1 lượt vote: ${topNames || 'Không có phiếu'}\n-> ${data.hasAssassin ? 'Sát thủ trong top 1 đã bị loại. Game kết thúc!' : 'Top 1 không phải sát thủ. Game kết thúc!'}`);
     });
 </script>
 </body>

@@ -248,6 +248,12 @@
         showScreen('screen-role');
     });
 
+    socket.on('vote_result_announced', (data) => {
+        const topNames = (data.top1Names || data.top5Names || []).join(', ');
+        const eliminated = (data.eliminatedNames || []).join(', ');
+        alert(`KẾT QUẢ VOTE CUỐI GAME:\nTop 1 lượt vote: ${topNames || 'Không có phiếu'}\n${data.hasAssassin ? `Sát thủ bị loại: ${eliminated}` : 'Top 1 không phải sát thủ, không có sát thủ bị loại.'}`);
+    });
+
     function submitVote() {
         const checkedBoxes = document.querySelectorAll('.vote-checkbox:checked');
         

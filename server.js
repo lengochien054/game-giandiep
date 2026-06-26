@@ -26,6 +26,8 @@ let currentMinigameClueMessage = "";
 let voteTimeout = null;
 let voteActive = false;
 let currentVotes = []; 
+let voteUsed = false;
+let gameEnded = false;
 
 io.on('connection', (socket) => {
     console.log(`Kết nối: ${socket.id}`);
@@ -87,7 +89,7 @@ io.on('connection', (socket) => {
         return clue;
     }
 
-    function sendClueToPolice(playerId, clueMessage) {
+    function sendClueToPlayer(playerId, clueMessage) {
         io.to(playerId).emit('receive_reward', {
             type: 'CLUE',
             message: `<b>${clueMessage}</b>`
@@ -103,6 +105,8 @@ io.on('connection', (socket) => {
             }));
         clueQueue = buildClueQueue(assassinsConfig);
         nextClueIndex = 0;
+        voteUsed = false;
+        gameEnded = false;
 
         Object.keys(players).forEach(id => {
             players[id].role = "POLICE";
@@ -165,6 +169,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('host_trigger_minigame', (data) => {
+        if (gameEnded) return;
         if (minigameTimeout) clearTimeout(minigameTimeout);
         minigameActive = true;
         currentCorrectAnswer = data.correctAnswer.toUpperCase().trim();
@@ -185,7 +190,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('submit_minigame_answer', (answerText) => {
-        if (!minigameActive) return;
+        if (!minigameActive || gameEnded) return;
         const p = players[socket.id];
         if (!p || !p.isAlive) return;
 
@@ -196,7 +201,7 @@ io.on('connection', (socket) => {
             p.correctAnswersCount += 1; 
             minigameAnswers.push({ id: socket.id, name: p.name, time: Date.now() });
 
-            if (p.role === 'POLICE') {
+            if (p.role === 'POLICE' || p.role === 'ASSASSIN') {
                 if (!clueReleasedThisMinigame) {
                     clueReleasedThisMinigame = true;
                     const nextClue = getNextClue();
@@ -210,15 +215,8 @@ io.on('connection', (socket) => {
                     }
                 }
 
-                sendClueToPolice(socket.id, currentMinigameClueMessage);
+                sendClueToPlayer(socket.id, currentMinigameClueMessage);
                 return;
-            }
-
-            if (p.role === 'ASSASSIN') {
-                socket.emit('receive_reward', {
-                    type: 'KILL_SKILL',
-                    message: `🎉 CHÚC MỪNG SÁT THỦ TRẢ LỜI CHÍNH XÁC!<br><br><b>Nhiệm vụ hành động:</b> Hãy đi cụng ly hoặc hô hào mọi người lên bia với 1 mục tiêu Cảnh sát. Sau khi làm xong hành động ngoài đời, hãy chọn tên họ bên dưới để loại họ ngay lập tức!`
-                });
             }
         }
     });
@@ -239,8 +237,13 @@ io.on('connection', (socket) => {
 
     // LUỒNG MỞ BÌNH CHỌN: SERVER LỌC SẴN DANH SÁCH NGƯỜI SỐNG GỬI ĐI
     socket.on('admin_open_vote_round', () => {
+        if (gameEnded || voteUsed || voteActive) {
+            socket.emit('vote_already_used');
+            return;
+        }
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
+        voteUsed = true;
         currentVotes = [];
 
         io.emit('close_all_overlays'); 
@@ -269,6 +272,7 @@ io.on('connection', (socket) => {
 
     function endVoteRound() {
         voteActive = false;
+        gameEnded = true;
         if (voteTimeout) clearTimeout(voteTimeout);
 
         let voteCounts = {};
@@ -296,6 +300,12 @@ io.on('connection', (socket) => {
         });
         io.emit('update_player_list', Object.values(players));
         io.emit('force_close_vote_screen');
+        io.emit('game_over_announced', {
+            winnerPhe: hasAssassin ? 'POLICE' : 'ASSASSIN',
+            hasAssassin: hasAssassin,
+            top1Names: top1.map(id => players[id] ? players[id].name : "Ẩn danh"),
+            eliminatedNames: eliminatedAssassins.map(id => players[id].name)
+        });
     }
 
     socket.on('disconnect', () => {
