@@ -28,7 +28,7 @@ let voteActive = false;
 let currentVotes = []; 
 
 io.on('connection', (socket) => {
-    console.log(`Káº¿t ná»‘i: ${socket.id}`);
+    console.log(`Kết nối: ${socket.id}`);
     socket.emit('update_player_list', Object.values(players));
 
     socket.on('join_game', (data) => {
@@ -122,12 +122,12 @@ io.on('connection', (socket) => {
             if (players[id].role === "ASSASSIN") {
                 io.to(id).emit('receive_role', { 
                     role: "ASSASSIN", 
-                    message: `Ban la sat thu. Quan tro da cau hinh ${players[id].hints.length} goi y ve ban.`
+                    message: `Bạn là sát thủ. Quản trò đã cấu hình ${players[id].hints.length} gợi ý về bạn.`
                 });
             } else {
                 io.to(id).emit('receive_role', { 
                     role: "POLICE", 
-                    message: "Xin chÃ o cáº£nh sÃ¡t, hÃ£y mau chÃ³ng tÃ¬m ra sÃ¡t thá»§ trÆ°á»›c khi bá»‹ loáº¡i"
+                    message: "Xin chào cảnh sát, hãy mau chóng tìm ra sát thủ trước khi bị loại"
                 });
             }
         });
@@ -202,10 +202,10 @@ io.on('connection', (socket) => {
                     const nextClue = getNextClue();
 
                     if (nextClue) {
-                        const targetText = nextClue.assassinNumber ? `Sat thu ${nextClue.assassinNumber}` : "sat thu";
-                        currentMinigameClueMessage = `Goi y ve ${targetText}: "${nextClue.text}"`;
+                        const targetText = nextClue.assassinNumber ? `Sát thủ ${nextClue.assassinNumber}` : "sát thủ";
+                        currentMinigameClueMessage = `Gợi ý về ${targetText}: "${nextClue.text}"`;
                     } else {
-                        currentMinigameClueMessage = "He thong da het goi y. Quan tro can nhap them goi y!";
+                        currentMinigameClueMessage = "Hệ thống đã hết gợi ý. Quản trò cần nhập thêm gợi ý!";
                         io.emit('assassin_hints_empty');
                     }
                 }
@@ -217,7 +217,7 @@ io.on('connection', (socket) => {
             if (p.role === 'ASSASSIN') {
                 socket.emit('receive_reward', {
                     type: 'KILL_SKILL',
-                    message: `ðŸŽ‰ CHÃšC Má»ªNG SÃT THá»¦ TRáº¢ Lá»œI CHÃNH XÃC!<br><br><b>Nhiá»‡m vá»¥ hÃ nh Ä‘á»™ng:</b> HÃ£y Ä‘i cá»¥ng ly hoáº·c hÃ´ hÃ o má»i ngÆ°á»i lÃªn bia vá»›i 1 má»¥c tiÃªu Cáº£nh sÃ¡t. Sau khi lÃ m xong hÃ nh Ä‘á»™ng ngoÃ i Ä‘á»i, hÃ£y chá»n tÃªn há» bÃªn dÆ°á»›i Ä‘á»ƒ loáº¡i há» ngay láº­p tá»©c!`
+                    message: `🎉 CHÚC MỪNG SÁT THỦ TRẢ LỜI CHÍNH XÁC!<br><br><b>Nhiệm vụ hành động:</b> Hãy đi cụng ly hoặc hô hào mọi người lên bia với 1 mục tiêu Cảnh sát. Sau khi làm xong hành động ngoài đời, hãy chọn tên họ bên dưới để loại họ ngay lập tức!`
                 });
             }
         }
@@ -226,7 +226,7 @@ io.on('connection', (socket) => {
     socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
 
     function startMinigameTimer(duration) {
-        // HÃ m phá»¥ trá»£ náº¿u cáº§n quáº£n lÃ½ nÃ¢ng cao bá»™ Ä‘áº¿m
+        // Hàm phụ trợ nếu cần quản lý nâng cao bộ đếm
     }
 
     function endMinigame() {
@@ -237,7 +237,7 @@ io.on('connection', (socket) => {
         io.emit('force_close_question');
     }
 
-    // LUá»’NG Má»ž BÃŒNH CHá»ŒN: SERVER Lá»ŒC Sáº´N DANH SÃCH NGÆ¯á»œI Sá»NG Gá»¬I ÄI
+    // LUỒNG MỞ BÌNH CHỌN: SERVER LỌC SẴN DANH SÁCH NGƯỜI SỐNG GỬI ĐI
     socket.on('admin_open_vote_round', () => {
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
@@ -245,7 +245,7 @@ io.on('connection', (socket) => {
 
         io.emit('close_all_overlays'); 
         
-        // Server tá»± Ä‘á»™ng xá»­ lÃ½ lá»c dá»¯ liá»‡u thÃ´ chuáº©n Ä‘Ã©t trÆ°á»›c khi phÃ¡t Ä‘i
+        // Server tự động xử lý lọc dữ liệu thô trước khi phát đi
         const livingPlayers = Object.values(players)
             .filter(p => p.isAlive)
             .map(p => ({ id: p.id, name: p.name }));
@@ -290,9 +290,9 @@ io.on('connection', (socket) => {
         
         io.emit('vote_result_announced', { 
             hasAssassin: hasAssassin, 
-            top1Names: top1.map(id => players[id] ? players[id].name : "An danh"),
+            top1Names: top1.map(id => players[id] ? players[id].name : "Ẩn danh"),
             eliminatedNames: eliminatedAssassins.map(id => players[id].name),
-            top5Names: top5.map(id => players[id] ? players[id].name : "áº¨n danh") 
+            top5Names: top5.map(id => players[id] ? players[id].name : "Ẩn danh") 
         });
         io.emit('update_player_list', Object.values(players));
         io.emit('force_close_vote_screen');
@@ -305,4 +305,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Há»‡ thá»‘ng cháº¡y mÆ°á»£t táº¡i port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Hệ thống chạy mượt tại port ${PORT}`); });

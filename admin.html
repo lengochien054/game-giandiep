@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BÃ n Äiá»u Phá»‘i Quáº£n TrÃ²</title>
+    <title>Bàn Điều Phối Quản Trò</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --purple-tech: #b388ff; --cyan-tech: #64ffda; --alert-red: #ff6584; }
@@ -26,61 +26,82 @@
 </head>
 <body>
 <div class="container">
-    <h2>BÃ€N ÄIá»€U PHá»I GAME</h2>
+    <h2>BÀN ĐIỀU PHỐI GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">ðŸ‘¥ SÆ  Äá»’ NHÃ‚N Sá»° TOÃ€N PHÃ’NG REALTIME (<span id="count">0</span>)</div>
+        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ TOÀN PHÒNG REALTIME (<span id="count">0</span>)</div>
         <div id="player-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 10px;"></div>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">âš”ï¸ Cáº¤U HÃŒNH BAN PHÃT VAI TRÃ’</div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 1:</p>
+        <div class="panel-title">⚔️ CẤU HÌNH BAN PHÁT VAI TRÒ</div>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 1:</p>
         <div class="setup-row">
-            <select id="as1-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 1 --</option></select>
-            <input type="text" id="as1-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 1...">
+            <select id="as1-select" class="as-selector"><option value="">-- Chọn Sát Thủ 1 --</option></select>
+            <input type="text" id="as1-clue" placeholder="Nhập gợi ý cho Sát thủ 1...">
         </div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 2:</p>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 2:</p>
         <div class="setup-row">
-            <select id="as2-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 2 --</option></select>
-            <input type="text" id="as2-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 2...">
+            <select id="as2-select" class="as-selector"><option value="">-- Chọn Sát Thủ 2 --</option></select>
+            <input type="text" id="as2-clue" placeholder="Nhập gợi ý cho Sát thủ 2...">
         </div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 3:</p>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 3:</p>
         <div class="setup-row">
-            <select id="as3-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 3 --</option></select>
-            <input type="text" id="as3-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 3...">
+            <select id="as3-select" class="as-selector"><option value="">-- Chọn Sát Thủ 3 --</option></select>
+            <input type="text" id="as3-clue" placeholder="Nhập gợi ý cho Sát thủ 3...">
         </div>
-        <button class="btn-start" onclick="submitAssignedRoles()">OK - XÃC NHáº¬N PHÃT VAI TRÃ’</button>
+        <button class="btn-start" onclick="submitAssignedRoles()">OK - XÁC NHẬN PHÁT VAI TRÒ</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">ðŸ“ KHO CÃ‚U Há»ŽI THIáº¾T Láº¬P Sáº´N (60 GIÃ‚Y)</div>
-        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">â³ THá»œI GIAN TRáº¢ Lá»œI CÃ’N Láº I: 60s</div>
+        <div class="panel-title">📝 KHO CÂU HỎI THIẾT LẬP SẴN (60 GIÂY)</div>
+        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: 60s</div>
         <select id="question-selector" onchange="loadPresetQuestion()">
-            <option value="">-- Chá»n cÃ¢u há»i nhanh --</option>
-            <optgroup label="VÃ’NG 1: Tráº¯c nghiá»‡m ABCD">
-                <option value="v1_1">V1 - Sáº£n pháº©m chá»§ lá»±c bÃ¡n cháº¡y nháº¥t quÃ½ trÆ°á»›c lÃ  gÃ¬?</option>
-                <option value="v1_2">V1 - KPI viáº¿ng thÄƒm khÃ¡ch hÃ ng (MCP) tá»‘i thiá»ƒu lÃ  bao nhiÃªu %?</option>
-            </optgroup>
-            <optgroup label="VÃ’NG 2: Tá»± luáº­n (Nháº­p tá»«)">
-                <option value="v2_1">V2 - Äiá»n tá»«: KhÃ¡ch hÃ ng lÃ  ... cá»§a doanh nghiá»‡p</option>
-                <option value="v2_2">V2 - TÃªn viáº¿t táº¯t cá»§a bá»™ pháº­n Quáº£n lÃ½ Há»‡ thá»‘ng IT lÃ  gÃ¬?</option>
-            </optgroup>
-            <optgroup label="VÃ’NG 3: Tráº¯c nghiá»‡m ABCD tÄƒng tá»‘c">
-                <option value="v3_1">V3 - Chiáº¿n dá»‹ch bÃ¹ng ná»• doanh sá»‘ tá»›i Ä‘Ã¢y diá»…n ra vÃ o thÃ¡ng máº¥y?</option>
+            <option value="">-- Chọn câu hỏi nhanh --</option>
+            <optgroup label="BỘ CÂU HỎI KIDO GROUP V2">
+                <option value="kido_1">Câu 1 - Mục tiêu chiến lược của KIDO là trở thành một trong ba tập đoàn thực phẩm tiêu dùng lớn nhất Đông Nam Á vào năm nào?</option>
+                <option value="kido_2">Câu 2 - Doanh thu mục tiêu của Tập đoàn KIDO trong năm 2026 (chưa bao gồm đóng góp từ các ngành hàng mới) là bao nhiêu?</option>
+                <option value="kido_3">Câu 3 - Thương hiệu nào dưới đây trực thuộc hệ sinh thái của KIDO Group?</option>
+                <option value="kido_4">Câu 4 - Trong năm 2026, KIDO tập trung vào việc tái cấu trúc vốn tại đơn vị nào?</option>
+                <option value="kido_5">Câu 5 - KIDO đã tham gia sự kiện văn hóa ẩm thực nào nổi bật trong năm 2026?</option>
+                <option value="kido_6">Câu 6 - Hoạt động 'Scan thị trường' của KIDO nhằm mục đích gì?</option>
+                <option value="kido_7">Câu 7 - Đối với việc ứng dụng công nghệ, KIDO hiện đang chú trọng điều gì?</option>
+                <option value="kido_8">Câu 8 - Ngành hàng nào của KIDO đang đẩy mạnh ra mắt các sản phẩm mới trong năm 2026?</option>
+                <option value="kido_9">Câu 9 - Tạp chí 'Hương Vị Cuộc Sống' số 109 nhấn mạnh điều gì trong quản lý nhân sự?</option>
+                <option value="kido_10">Câu 10 - KIDO hướng đến mô hình tập đoàn nào?</option>
+                <option value="kido_11">Câu 11 - Đâu là định hướng của KIDO đối với chuyển đổi số?</option>
+                <option value="kido_12">Câu 12 - Mục tiêu của việc tái cấu trúc tại Tường An là gì?</option>
+                <option value="kido_13">Câu 13 - KIDO thường xuyên tổ chức các chương trình nào cho nhân viên để nâng cao hiệu suất?</option>
+                <option value="kido_14">Câu 14 - Văn hóa doanh nghiệp của KIDO được thể hiện qua đâu?</option>
+                <option value="kido_15">Câu 15 - Ngành hàng gia vị của KIDO gắn liền với thương hiệu nào?</option>
+                <option value="kido_16">Câu 16 - Trong chiến lược nhân sự 2026, KIDO tập trung vào điều gì?</option>
+                <option value="kido_17">Câu 17 - KIDO Group tập trung phát triển các sản phẩm nào để phục vụ người tiêu dùng nhanh (FMCG)?</option>
+                <option value="kido_18">Câu 18 - Chiến dịch thực chiến của KIDO có vai trò gì?</option>
+                <option value="kido_19">Câu 19 - KIDO coi trọng yếu tố nào nhất trong quá trình vận hành 2026?</option>
+                <option value="kido_20">Câu 20 - Tạp chí 'Hương Vị Cuộc Sống' có vai trò gì tại KIDO?</option>
+                <option value="kido_21">Câu 21 - Việc KIDO đẩy mạnh bánh bao Thọ Phát thể hiện định hướng gì?</option>
+                <option value="kido_22">Câu 22 - Mục tiêu của KIDO trong ngành thực phẩm là gì?</option>
+                <option value="kido_23">Câu 23 - KIDO ứng dụng AI vào công việc nhằm mục đích gì?</option>
+                <option value="kido_24">Câu 24 - Sự phát triển của KIDO dựa trên yếu tố cốt lõi nào?</option>
+                <option value="kido_25">Câu 25 - KIDO Group định vị mình là một tập đoàn:</option>
+                <option value="kido_26">Câu 26 - Các sản phẩm mới của KIDO thường nhắm tới:</option>
+                <option value="kido_27">Câu 27 - KIDO duy trì hoạt động truyền thông nội bộ nhằm:</option>
+                <option value="kido_28">Câu 28 - KIDO dự kiến hoàn thành mục tiêu Top 3 Đông Nam Á vào năm nào?</option>
+                <option value="kido_29">Câu 29 - Để đạt được mục tiêu 2026, KIDO tập trung vào:</option>
+                <option value="kido_30">Câu 30 - Chủ đề tiêu điểm của tạp chí số 109 là gì?</option>
             </optgroup>
         </select>
-        <input type="text" id="display-q" placeholder="Ná»™i dung cÃ¢u há»i..." readonly>
-        <input type="text" id="display-a" placeholder="ÄÃ¡p Ã¡n Ä‘Ãºng..." readonly>
-        <button onclick="triggerMinigame()">ðŸ”¥ TUNG CÃ‚U Há»ŽI XUá»NG ÄIá»†N THOáº I</button>
-        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-q" onclick="forceEndMinigame()">â¹ KHÃ“A Sá»” CÃ‚U Há»ŽI Sá»šM</button>
+        <input type="text" id="display-q" placeholder="Nội dung câu hỏi..." readonly>
+        <input type="text" id="display-a" placeholder="Đáp án đúng..." readonly>
+        <button onclick="triggerMinigame()">🔥 TUNG CÂU HỎI XUỐNG ĐIỆN THOẠI</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-q" onclick="forceEndMinigame()">⏹ KHÓA SỔ CÂU HỎI SỚM</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">ðŸ—³ï¸ ÄIá»€U HÃ€NH Bá»Ž PHIáº¾U NGHI PHáº M (60 GIÃ‚Y)</div>
-        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">â³ Cá»”NG VOTE ÄANG Má»ž: 60s</div>
-        <button onclick="openVoteRound()">Má»ž Cá»”NG VOTE (Tá»° Äá»˜NG KHÃ“A SAU 60S)</button>
-        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">â¹ KHÃ“A Cá»”NG Bá»Ž PHIáº¾U Sá»šM</button>
+        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU NGHI PHẠM (60 GIÂY)</div>
+        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">⏳ CỔNG VOTE ĐANG MỞ: 60s</div>
+        <button onclick="openVoteRound()">MỞ CỔNG VOTE (TỰ ĐỘNG KHÓA SAU 60S)</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">⏹ KHÓA CỔNG BỎ PHIẾU SỚM</button>
     </div>
 </div>
 
@@ -91,15 +112,40 @@
     let latestPlayers = [];
 
     const presets = {
-        v1_1: { type: "CHOICE", q: "Sáº£n pháº©m chá»§ lá»±c bÃ¡n cháº¡y nháº¥t quÃ½ trÆ°á»›c lÃ  gÃ¬?", a: "A", options: ["A. Sá»¯a tÆ°Æ¡i tiá»‡t trÃ¹ng", "B. NÆ°á»›c máº¯m cá»‘t", "C. MÃ¬ Äƒn liá»n", "D. BÃ¡nh ngá»t"] },
-        v1_2: { type: "CHOICE", q: "KPI viáº¿ng thÄƒm khÃ¡ch hÃ ng (MCP) chuáº©n quy Ä‘á»‹nh tá»‘i thiá»ƒu bao nhiÃªu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
-        v2_1: { type: "TEXT", q: "Äiá»n tá»«: KhÃ¡ch hÃ ng lÃ  ________ cá»§a doanh nghiá»‡p (viáº¿t liá»n khÃ´ng dáº¥u)", a: "thuongde" },
-        v2_2: { type: "TEXT", q: "TÃªn viáº¿t táº¯t cá»§a bá»™ pháº­n Há»‡ thá»‘ng Quáº£n trá»‹ KÃªnh PhÃ¢n Phá»‘i Sales lÃ  gÃ¬?", a: "dms" },
-        v3_1: { type: "CHOICE", q: "Chiáº¿n dá»‹ch bÃ¹ng ná»• doanh sá»‘ toÃ n quá»‘c sáº¯p tá»›i sáº½ diá»…n ra vÃ o thÃ¡ng máº¥y?", a: "B", options: ["A. ThÃ¡ng 7", "B. ThÃ¡ng 8", "C. ThÃ¡ng 9", "D. ThÃ¡ng 10"] }
+        kido_1: { type: "CHOICE", q: "Mục tiêu chiến lược của KIDO là trở thành một trong ba tập đoàn thực phẩm tiêu dùng lớn nhất Đông Nam Á vào năm nào?", a: "D", options: ["A. 2027", "B. 2028", "C. 2029", "D. 2030"] },
+        kido_2: { type: "CHOICE", q: "Doanh thu mục tiêu của Tập đoàn KIDO trong năm 2026 (chưa bao gồm đóng góp từ các ngành hàng mới) là bao nhiêu?", a: "C", options: ["A. 10.000 tỷ đồng", "B. 11.000 tỷ đồng", "C. 12.000 tỷ đồng", "D. 15.000 tỷ đồng"] },
+        kido_3: { type: "CHOICE", q: "Thương hiệu nào dưới đây trực thuộc hệ sinh thái của KIDO Group?", a: "D", options: ["A. Tường An", "B. Thọ Phát", "C. KIDO's Bakery", "D. Tất cả các phương án trên"] },
+        kido_4: { type: "CHOICE", q: "Trong năm 2026, KIDO tập trung vào việc tái cấu trúc vốn tại đơn vị nào?", a: "B", options: ["A. Vocarimex", "B. Tường An", "C. Calofic", "D. Thọ Phát"] },
+        kido_5: { type: "CHOICE", q: "KIDO đã tham gia sự kiện văn hóa ẩm thực nào nổi bật trong năm 2026?", a: "A", options: ["A. Lễ hội bánh mì 2026", "B. Lễ hội ẩm thực quốc tế", "C. Ngày hội hàng Việt Nam", "D. Hội chợ triển lãm thực phẩm"] },
+        kido_6: { type: "CHOICE", q: "Hoạt động 'Scan thị trường' của KIDO nhằm mục đích gì?", a: "B", options: ["A. Nghiên cứu đối thủ cạnh tranh", "B. Mở rộng thị phần cho ngành hàng thực phẩm", "C. Tìm kiếm nhà cung cấp mới", "D. Tuyển dụng nhân sự thị trường"] },
+        kido_7: { type: "CHOICE", q: "Đối với việc ứng dụng công nghệ, KIDO hiện đang chú trọng điều gì?", a: "B", options: ["A. Thay thế hoàn toàn con người bằng AI", "B. Đào tạo nhân sự về AI để làm cộng sự vận hành", "C. Chỉ áp dụng cho khối sản xuất", "D. Chỉ áp dụng cho khối tài chính"] },
+        kido_8: { type: "CHOICE", q: "Ngành hàng nào của KIDO đang đẩy mạnh ra mắt các sản phẩm mới trong năm 2026?", a: "A", options: ["A. Ngành Bánh bao (Thọ Phát)", "B. Ngành Dầu ăn", "C. Ngành Kem", "D. Ngành Gia vị"] },
+        kido_9: { type: "CHOICE", q: "Tạp chí 'Hương Vị Cuộc Sống' số 109 nhấn mạnh điều gì trong quản lý nhân sự?", a: "B", options: ["A. Tăng cường kỷ luật lao động", "B. Quản trị thành quả", "C. Cắt giảm nhân sự", "D. Tuyển dụng ồ ạt"] },
+        kido_10: { type: "CHOICE", q: "KIDO hướng đến mô hình tập đoàn nào?", a: "B", options: ["A. Tập đoàn đa ngành thuần túy", "B. Tập đoàn thực phẩm tiêu dùng", "C. Tập đoàn bất động sản", "D. Tập đoàn công nghệ"] },
+        kido_11: { type: "CHOICE", q: "Đâu là định hướng của KIDO đối với chuyển đổi số?", a: "A", options: ["A. Coi AI là cộng sự, không thay thế con người", "B. Tự động hóa mọi khâu sản xuất", "C. Tập trung vào bán hàng online 100%", "D. Không ưu tiên chuyển đổi số"] },
+        kido_12: { type: "CHOICE", q: "Mục tiêu của việc tái cấu trúc tại Tường An là gì?", a: "B", options: ["A. Để bán lại cho đối tác nước ngoài", "B. Tối ưu hóa cơ cấu vốn", "C. Giải thể công ty", "D. Chuyển sang lĩnh vực khác"] },
+        kido_13: { type: "CHOICE", q: "KIDO thường xuyên tổ chức các chương trình nào cho nhân viên để nâng cao hiệu suất?", a: "D", options: ["A. Đào tạo kỹ năng làm việc", "B. Đào tạo về công nghệ và AI", "C. Hoạt động team building", "D. Tất cả đều đúng"] },
+        kido_14: { type: "CHOICE", q: "Văn hóa doanh nghiệp của KIDO được thể hiện qua đâu?", a: "D", options: ["A. Tạp chí nội bộ", "B. Các hoạt động gắn kết", "C. Mục tiêu chung của tập đoàn", "D. Tất cả đều đúng"] },
+        kido_15: { type: "CHOICE", q: "Ngành hàng gia vị của KIDO gắn liền với thương hiệu nào?", a: "A", options: ["A. Tường An", "B. Cái Lân", "C. Meizan", "D. Neptune"] },
+        kido_16: { type: "CHOICE", q: "Trong chiến lược nhân sự 2026, KIDO tập trung vào điều gì?", a: "D", options: ["A. Nâng tầm nội lực", "B. Thực thi chuyên nghiệp", "C. Hiệu quả", "D. Tất cả các phương án trên"] },
+        kido_17: { type: "CHOICE", q: "KIDO Group tập trung phát triển các sản phẩm nào để phục vụ người tiêu dùng nhanh (FMCG)?", a: "A", options: ["A. Thực phẩm thiết yếu", "B. Đồ dùng gia đình", "C. Thời trang", "D. Thiết bị điện tử"] },
+        kido_18: { type: "CHOICE", q: "Chiến dịch thực chiến của KIDO có vai trò gì?", a: "D", options: ["A. Thúc đẩy doanh số", "B. Mở rộng thị phần", "C. Xây dựng thương hiệu tại điểm bán", "D. Tất cả đều đúng"] },
+        kido_19: { type: "CHOICE", q: "KIDO coi trọng yếu tố nào nhất trong quá trình vận hành 2026?", a: "A", options: ["A. Công nghệ và con người", "B. Chỉ có công nghệ", "C. Chỉ có tài chính", "D. Chỉ có marketing"] },
+        kido_20: { type: "CHOICE", q: "Tạp chí 'Hương Vị Cuộc Sống' có vai trò gì tại KIDO?", a: "A", options: ["A. Công cụ truyền thông nội bộ", "B. Báo cáo tài chính", "C. Tài liệu quảng cáo bên ngoài", "D. Sách giáo khoa"] },
+        kido_21: { type: "CHOICE", q: "Việc KIDO đẩy mạnh bánh bao Thọ Phát thể hiện định hướng gì?", a: "A", options: ["A. Đa dạng hóa danh mục sản phẩm thực phẩm", "B. Rút lui khỏi thị trường bánh", "C. Chuyển sang kinh doanh nhà hàng", "D. Chỉ tập trung bán online"] },
+        kido_22: { type: "CHOICE", q: "Mục tiêu của KIDO trong ngành thực phẩm là gì?", a: "B", options: ["A. Dẫn đầu về thị phần", "B. Trở thành Top 3 Đông Nam Á", "C. Tăng giá cổ phiếu", "D. Giảm chi phí sản xuất"] },
+        kido_23: { type: "CHOICE", q: "KIDO ứng dụng AI vào công việc nhằm mục đích gì?", a: "A", options: ["A. Tăng hiệu suất công việc", "B. Thay thế hoàn toàn nhân viên", "C. Cắt giảm tiền lương", "D. Giám sát nhân viên"] },
+        kido_24: { type: "CHOICE", q: "Sự phát triển của KIDO dựa trên yếu tố cốt lõi nào?", a: "D", options: ["A. Nền tảng thực phẩm vững chắc", "B. Chiến lược nhạy bén", "C. Đội ngũ nhân sự chuyên nghiệp", "D. Tất cả đều đúng"] },
+        kido_25: { type: "CHOICE", q: "KIDO Group định vị mình là một tập đoàn:", a: "A", options: ["A. Tiêu dùng, thực phẩm", "B. Bất động sản", "C. Tài chính", "D. Công nghệ thông tin"] },
+        kido_26: { type: "CHOICE", q: "Các sản phẩm mới của KIDO thường nhắm tới:", a: "A", options: ["A. Sự tiện lợi cho người tiêu dùng", "B. Giá thành cao cấp", "C. Chỉ phục vụ xuất khẩu", "D. Chỉ bán ở siêu thị lớn"] },
+        kido_27: { type: "CHOICE", q: "KIDO duy trì hoạt động truyền thông nội bộ nhằm:", a: "D", options: ["A. Gắn kết nhân viên", "B. Phổ biến chiến lược tập đoàn", "C. Chia sẻ kiến thức", "D. Tất cả đều đúng"] },
+        kido_28: { type: "CHOICE", q: "KIDO dự kiến hoàn thành mục tiêu Top 3 Đông Nam Á vào năm nào?", a: "C", options: ["A. 2026", "B. 2028", "C. 2030", "D. 2035"] },
+        kido_29: { type: "CHOICE", q: "Để đạt được mục tiêu 2026, KIDO tập trung vào:", a: "D", options: ["A. Nâng cao hiệu quả thực thi", "B. Đầu tư công nghệ", "C. Tối ưu hóa nguồn lực", "D. Tất cả đều đúng"] },
+        kido_30: { type: "CHOICE", q: "Chủ đề tiêu điểm của tạp chí số 109 là gì?", a: "A", options: ["A. Chiến lược nhân sự 2026", "B. Sản xuất kem", "C. Tài chính quốc tế", "D. Bất động sản"] }
     };
 
     function getPlayerOptions(selectedId = "") {
-        return `<option value="">-- Chon nhan su --</option>` + latestPlayers
+        return `<option value="">-- Chọn nhân sự --</option>` + latestPlayers
             .filter(p => p.isAlive)
             .map(p => `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${p.name}</option>`)
             .join('');
@@ -111,16 +157,16 @@
 
         const panel = firstSelector.closest('.panel-box');
         panel.innerHTML = `
-            <div class="panel-title">CAU HINH BAN PHAT VAI TRO</div>
-            <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">So luong sat thu:</p>
+            <div class="panel-title">CẤU HÌNH BAN PHÁT VAI TRÒ</div>
+            <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Số lượng sát thủ:</p>
             <input type="number" id="assassin-count" min="1" value="3" onchange="renderAssassinSetup()">
             <div id="assassin-config-list"></div>
             <div style="border-top:1px solid #233554; padding-top:10px; margin-top:10px;">
-                <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Nhap them goi y khi he thong het goi y:</p>
-                <textarea id="extra-hints" placeholder="Moi dong la 1 goi y moi..."></textarea>
-                <button onclick="addExtraHints()">THEM GOI Y</button>
+                <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Nhập thêm gợi ý khi hệ thống hết gợi ý:</p>
+                <textarea id="extra-hints" placeholder="Mỗi dòng là 1 gợi ý mới..."></textarea>
+                <button onclick="addExtraHints()">THÊM GỢI Ý</button>
             </div>
-            <button class="btn-start" onclick="submitAssignedRoles()">OK - XAC NHAN PHAT VAI TRO</button>
+            <button class="btn-start" onclick="submitAssignedRoles()">OK - XÁC NHẬN PHÁT VAI TRÒ</button>
         `;
         renderAssassinSetup();
     }
@@ -140,9 +186,9 @@
             const old = oldRows[index] || {};
             return `
                 <div class="assassin-row">
-                    <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Sat thu ${index + 1}:</p>
+                    <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Sát thủ ${index + 1}:</p>
                     <select class="as-selector">${getPlayerOptions(old.id)}</select>
-                    <textarea class="as-hints" placeholder="Nhap nhieu goi y cho sat thu ${index + 1}, moi dong la 1 goi y...">${old.hints || ""}</textarea>
+                    <textarea class="as-hints" placeholder="Nhập nhiều gợi ý cho sát thủ ${index + 1}, mỗi dòng là 1 gợi ý...">${old.hints || ""}</textarea>
                 </div>
             `;
         }).join('');
@@ -151,7 +197,7 @@
     function addExtraHints() {
         const input = document.getElementById('extra-hints');
         const hints = input.value.trim();
-        if (!hints) return alert("Vui long nhap it nhat 1 goi y moi!");
+        if (!hints) return alert("Vui lòng nhập ít nhất 1 gợi ý mới!");
         socket.emit('admin_add_assassin_hints', { hints });
         input.value = "";
     }
@@ -163,7 +209,7 @@
         if(!id) return;
         currentQData = presets[id];
         document.getElementById('display-q').value = currentQData.q;
-        document.getElementById('display-a').value = `ÄÃ¡p Ã¡n Ä‘Ãºng: ${currentQData.a.toUpperCase()}`;
+        document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
     }
 
     socket.on('update_player_list', (list) => {
@@ -172,8 +218,8 @@
         
         const container = document.getElementById('player-list');
         container.innerHTML = list.map((p, index) => {
-            let roleText = p.role === 'PENDING' ? 'ChÆ°a phÃ¢n vai' : p.role === 'ASSASSIN' ? 'SÃ¡t thá»§ ðŸ©¸' : 'Cáº£nh sÃ¡t ðŸ›¡ï¸';
-            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">â†³ Gá»£i Ã½: "${p.clue}" [CÆ°á»›p thÃªm: ${p.stolenVotes} phiáº¿u]</span>` : '';
+            let roleText = p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ 🩸' : 'Cảnh sát 🛡️';
+            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">↳ Gợi ý: "${p.clue}" [Cướp thêm: ${p.stolenVotes} phiếu]</span>` : '';
             
             return `
                 <div class="player-item">
@@ -182,8 +228,8 @@
                         ${clueDetailHTML}
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <span style="font-weight:bold; font-size:12px; color:${p.isAlive ? '#64ffda' : '#ff6584'}">${p.isAlive ? 'Sá»NG' : 'CHáº¾T'}</span>
-                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Äuá»•i</button>
+                        <span style="font-weight:bold; font-size:12px; color:${p.isAlive ? '#64ffda' : '#ff6584'}">${p.isAlive ? 'SỐNG' : 'CHẾT'}</span>
+                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
                     </div>
                 </div>
             `;
@@ -192,14 +238,14 @@
         const selectors = document.querySelectorAll('.as-selector');
         selectors.forEach(sel => {
             const currentVal = sel.value;
-            sel.innerHTML = `<option value="">-- Chá»n NhÃ¢n Sá»± --</option>` + list.filter(p => p.isAlive).map(p => `
+            sel.innerHTML = `<option value="">-- Chọn Nhân Sự --</option>` + list.filter(p => p.isAlive).map(p => `
                 <option value="${p.id}">${p.name}</option>
             `).join('');
             sel.value = currentVal;
         });
     });
 
-    function kickPlayer(socketId) { if(confirm("XÃ³a ngÆ°á»i chÆ¡i?")) { socket.emit('kick_player_by_admin', socketId); } }
+    function kickPlayer(socketId) { if(confirm("Xóa người chơi?")) { socket.emit('kick_player_by_admin', socketId); } }
 
     function submitAssignedRoles() {
         const id1 = document.getElementById('as1-select').value;
@@ -209,7 +255,7 @@
         const id3 = document.getElementById('as3-select').value;
         const clue3 = document.getElementById('as3-clue').value;
 
-        if(!id1 && !id2 && !id3) return alert("Vui lÃ²ng chá»‰ Ä‘á»‹nh Ã­t nháº¥t 1 SÃ¡t thá»§!");
+        if(!id1 && !id2 && !id3) return alert("Vui lòng chỉ định ít nhất 1 Sát thủ!");
 
         socket.emit('admin_assign_roles', {
             assassins: [
@@ -218,7 +264,7 @@
                 { id: id3, clue: clue3 }
             ]
         });
-        alert("ÄÃ£ gá»­i danh tÃ­nh cÃ i Ä‘áº·t toÃ n phÃ²ng thÃ nh cÃ´ng!");
+        alert("Đã gửi danh tính cài đặt toàn phòng thành công!");
     }
     
     function submitAssignedRoles() {
@@ -227,14 +273,14 @@
             hints: row.querySelector('.as-hints').value
         })).filter(as => as.id);
 
-        if(assassins.length === 0) return alert("Vui long chi dinh it nhat 1 sat thu!");
+        if(assassins.length === 0) return alert("Vui lòng chỉ định ít nhất 1 sát thủ!");
 
         socket.emit('admin_assign_roles', { assassins: assassins });
-        alert("Da gui danh tinh cai dat toan phong thanh cong!");
+        alert("Đã gửi danh tính cài đặt toàn phòng thành công!");
     }
 
     function triggerMinigame() {
-        if(!currentQData) return alert("Vui lÃ²ng lá»±a chá»n cÃ¢u há»i máº«u trÆ°á»›c!");
+        if(!currentQData) return alert("Vui lòng lựa chọn câu hỏi mẫu trước!");
         socket.emit('host_trigger_minigame', { id: Date.now(), type: currentQData.type, question: currentQData.q, correctAnswer: currentQData.a, options: currentQData.options || [] });
         
         if(adminTimerInterval) clearInterval(adminTimerInterval);
@@ -245,7 +291,7 @@
 
         adminTimerInterval = setInterval(() => {
             timeLeft--;
-            timerBox.innerText = `â³ THá»œI GIAN TRáº¢ Lá»œI CÃ’N Láº I: ${timeLeft}s`;
+            timerBox.innerText = `⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: ${timeLeft}s`;
             if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; document.getElementById('btn-stop-q').style.display = 'none';}
         }, 1000);
     }
@@ -262,7 +308,7 @@
 
         adminTimerInterval = setInterval(() => {
             voteTimeLeft--;
-            voteTimerBox.innerText = `â³ Cá»”NG VOTE ÄANG Má»ž: ${voteTimeLeft}s`;
+            voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
             if(voteTimeLeft <= 0) { clearInterval(adminTimerInterval); voteTimerBox.style.display = 'none'; document.getElementById('btn-stop-v').style.display = 'none';}
         }, 1000);
     }
@@ -273,17 +319,17 @@
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-timer').style.display = 'none';
         document.getElementById('btn-stop-q').style.display = 'none';
-        alert(`CÃ‚U Há»ŽI Káº¾T THÃšC!\nðŸ† Top 3 nhanh nháº¥t: ${winners.length > 0 ? winners.join(', ') : 'KhÃ´ng ai ná»™p bÃ i ká»‹p!'}`);
+        alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai nộp bài kịp!'}`);
     });
 
-    socket.on('player_died', (data) => alert(`Há»† THá»NG: Máº­t vá»¥ [ ${data.victimName} ] Ä‘Ã£ trÃºng Ä‘á»™c tá»­ tráº­n!`));
+    socket.on('player_died', (data) => alert(`HỆ THỐNG: Mật vụ [ ${data.victimName} ] đã trúng độc tử trận!`));
     
     socket.on('assassin_hints_empty', () => {
-        alert("He thong da het goi y. Hay nhap them goi y o khung bo sung.");
+        alert("Hệ thống đã hết gợi ý. Hãy nhập thêm gợi ý ở khung bổ sung.");
     });
 
     socket.on('assassin_hints_updated', (data) => {
-        alert(`Da them ${data.addedHints} goi y. Con ${data.remainingHints} goi y chua hien thi.`);
+        alert(`Đã thêm ${data.addedHints} gợi ý. Còn ${data.remainingHints} gợi ý chưa hiển thị.`);
     });
 
     socket.on('vote_result_announced', (data) => {
@@ -291,7 +337,7 @@
         document.getElementById('admin-vote-timer').style.display = 'none';
         document.getElementById('btn-stop-v').style.display = 'none';
         const topNames = (data.top1Names || data.top5Names || []).join(', ');
-        alert(`KET QUA VOTE ROUND:\nTop 1 luot vote: ${topNames}\n-> ${data.hasAssassin ? 'Sat thu trong top 1 da bi loai!' : 'Top 1 khong phai sat thu, khong ai bi loai.'}`);
+        alert(`KẾT QUẢ VOTE ROUND:\nTop 1 lượt vote: ${topNames}\n-> ${data.hasAssassin ? 'Sát thủ trong top 1 đã bị loại!' : 'Top 1 không phải sát thủ, không ai bị loại.'}`);
     });
 </script>
 </body>
