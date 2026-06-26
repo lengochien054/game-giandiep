@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
@@ -14,17 +14,21 @@ app.get('/admin', (req, res) => { res.sendFile(path.resolve(__dirname, 'admin.ht
 
 let players = {}; 
 let assassinsConfig = []; 
+let clueQueue = [];
+let nextClueIndex = 0;
 let minigameTimeout = null;
 let minigameActive = false;
 let currentCorrectAnswer = "";
 let minigameAnswers = []; 
+let clueReleasedThisMinigame = false;
+let currentMinigameClueMessage = "";
 
 let voteTimeout = null;
 let voteActive = false;
 let currentVotes = []; 
 
 io.on('connection', (socket) => {
-    console.log(`Kết nối: ${socket.id}`);
+    console.log(`Káº¿t ná»‘i: ${socket.id}`);
     socket.emit('update_player_list', Object.values(players));
 
     socket.on('join_game', (data) => {
@@ -48,38 +52,102 @@ io.on('connection', (socket) => {
         }
     });
 
+    function normalizeHints(hints) {
+        if (Array.isArray(hints)) {
+            return hints.map(h => String(h).trim()).filter(Boolean);
+        }
+        return String(hints || "")
+            .split(/\r?\n|;/)
+            .map(h => h.trim())
+            .filter(Boolean);
+    }
+
+    function buildClueQueue(config) {
+        const queue = [];
+        const maxHints = Math.max(0, ...config.map(as => as.hints.length));
+
+        for (let hintIndex = 0; hintIndex < maxHints; hintIndex += 1) {
+            config.forEach((as, assassinIndex) => {
+                if (as.hints[hintIndex]) {
+                    queue.push({
+                        assassinNumber: assassinIndex + 1,
+                        text: as.hints[hintIndex]
+                    });
+                }
+            });
+        }
+
+        return queue;
+    }
+
+    function getNextClue() {
+        const clue = clueQueue[nextClueIndex];
+        if (!clue) return null;
+        nextClueIndex += 1;
+        return clue;
+    }
+
+    function sendClueToPolice(playerId, clueMessage) {
+        io.to(playerId).emit('receive_reward', {
+            type: 'CLUE',
+            message: `<b>${clueMessage}</b>`
+        });
+    }
+
     socket.on('admin_assign_roles', (data) => {
-        assassinsConfig = data.assassins.filter(as => as.id !== "");
+        assassinsConfig = (data.assassins || [])
+            .filter(as => as.id && players[as.id])
+            .map(as => ({
+                id: as.id,
+                hints: normalizeHints(as.hints || as.clue)
+            }));
+        clueQueue = buildClueQueue(assassinsConfig);
+        nextClueIndex = 0;
 
         Object.keys(players).forEach(id => {
             players[id].role = "POLICE";
             players[id].clue = "";
+            players[id].hints = [];
             players[id].correctAnswersCount = 0;
             players[id].stolenVotes = 0;
         });
 
-        data.assassins.forEach((as) => {
-            if (as.id && players[as.id]) {
-                players[as.id].role = "ASSASSIN";
-                players[as.id].clue = as.clue;
-            }
+        assassinsConfig.forEach((as) => {
+            players[as.id].role = "ASSASSIN";
+            players[as.id].hints = as.hints;
+            players[as.id].clue = as.hints[0] || "";
         });
 
         Object.keys(players).forEach(id => {
             if (players[id].role === "ASSASSIN") {
                 io.to(id).emit('receive_role', { 
                     role: "ASSASSIN", 
-                    message: `Bạn là sát thủ, hãy nhanh chóng bắn thật nhiều cảnh sát. Gợi ý về bạn là: ${players[id].clue}`
+                    message: `Ban la sat thu. Quan tro da cau hinh ${players[id].hints.length} goi y ve ban.`
                 });
             } else {
                 io.to(id).emit('receive_role', { 
                     role: "POLICE", 
-                    message: "Xin chào cảnh sát, hãy mau chóng tìm ra sát thủ trước khi bị loại"
+                    message: "Xin chÃ o cáº£nh sÃ¡t, hÃ£y mau chÃ³ng tÃ¬m ra sÃ¡t thá»§ trÆ°á»›c khi bá»‹ loáº¡i"
                 });
             }
         });
 
         io.emit('update_player_list', Object.values(players));
+    });
+
+    socket.on('admin_add_assassin_hints', (data) => {
+        const newHints = normalizeHints(data && data.hints);
+        if (newHints.length === 0) return;
+
+        newHints.forEach(text => clueQueue.push({
+            assassinNumber: null,
+            text
+        }));
+
+        io.emit('assassin_hints_updated', {
+            remainingHints: Math.max(0, clueQueue.length - nextClueIndex),
+            addedHints: newHints.length
+        });
     });
 
     socket.on('assassinate_player', (targetId) => {
@@ -101,6 +169,8 @@ io.on('connection', (socket) => {
         minigameActive = true;
         currentCorrectAnswer = data.correctAnswer.toUpperCase().trim();
         minigameAnswers = [];
+        clueReleasedThisMinigame = false;
+        currentMinigameClueMessage = "";
 
         io.emit('close_all_overlays'); 
         
@@ -127,25 +197,27 @@ io.on('connection', (socket) => {
             minigameAnswers.push({ id: socket.id, name: p.name, time: Date.now() });
 
             if (p.role === 'POLICE') {
-                let clueMessage = "";
-                if (p.correctAnswersCount === 1 && assassinsConfig[0]) {
-                    clueMessage = `Gợi ý về Sát thủ 1: "${assassinsConfig[0].clue}"`;
-                } else if (p.correctAnswersCount === 2 && assassinsConfig[1]) {
-                    clueMessage = `Gợi ý về Sát thủ 2: "${assassinsConfig[1].clue}"`;
-                } else if (p.correctAnswersCount >= 3 && assassinsConfig[2]) {
-                    clueMessage = `Gợi ý về Sát thủ 3: "${assassinsConfig[2].clue}"`;
-                } else {
-                    clueMessage = "Hệ thống đã hết manh mối để cung cấp!";
+                if (!clueReleasedThisMinigame) {
+                    clueReleasedThisMinigame = true;
+                    const nextClue = getNextClue();
+
+                    if (nextClue) {
+                        const targetText = nextClue.assassinNumber ? `Sat thu ${nextClue.assassinNumber}` : "sat thu";
+                        currentMinigameClueMessage = `Goi y ve ${targetText}: "${nextClue.text}"`;
+                    } else {
+                        currentMinigameClueMessage = "He thong da het goi y. Quan tro can nhap them goi y!";
+                        io.emit('assassin_hints_empty');
+                    }
                 }
-                
-                socket.emit('receive_reward', {
-                    type: 'CLUE',
-                    message: `🎉 CHÚC MỪNG BẠN TRẢ LỜI CHÍNH XÁC!<br>Đây là lần đúng thứ ${p.correctAnswersCount} của bạn.<br><br><b>${clueMessage}</b>`
-                });
-            } else if (p.role === 'ASSASSIN') {
+
+                sendClueToPolice(socket.id, currentMinigameClueMessage);
+                return;
+            }
+
+            if (p.role === 'ASSASSIN') {
                 socket.emit('receive_reward', {
                     type: 'KILL_SKILL',
-                    message: `🎉 CHÚC MỪNG SÁT THỦ TRẢ LỜI CHÍNH XÁC!<br><br><b>Nhiệm vụ hành động:</b> Hãy đi cụng ly hoặc hô hào mọi người lên bia với 1 mục tiêu Cảnh sát. Sau khi làm xong hành động ngoài đời, hãy chọn tên họ bên dưới để loại họ ngay lập tức!`
+                    message: `ðŸŽ‰ CHÃšC Má»ªNG SÃT THá»¦ TRáº¢ Lá»œI CHÃNH XÃC!<br><br><b>Nhiá»‡m vá»¥ hÃ nh Ä‘á»™ng:</b> HÃ£y Ä‘i cá»¥ng ly hoáº·c hÃ´ hÃ o má»i ngÆ°á»i lÃªn bia vá»›i 1 má»¥c tiÃªu Cáº£nh sÃ¡t. Sau khi lÃ m xong hÃ nh Ä‘á»™ng ngoÃ i Ä‘á»i, hÃ£y chá»n tÃªn há» bÃªn dÆ°á»›i Ä‘á»ƒ loáº¡i há» ngay láº­p tá»©c!`
                 });
             }
         }
@@ -154,7 +226,7 @@ io.on('connection', (socket) => {
     socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
 
     function startMinigameTimer(duration) {
-        // Hàm phụ trợ nếu cần quản lý nâng cao bộ đếm
+        // HÃ m phá»¥ trá»£ náº¿u cáº§n quáº£n lÃ½ nÃ¢ng cao bá»™ Ä‘áº¿m
     }
 
     function endMinigame() {
@@ -165,7 +237,7 @@ io.on('connection', (socket) => {
         io.emit('force_close_question');
     }
 
-    // LUỒNG MỞ BÌNH CHỌN: SERVER LỌC SẴN DANH SÁCH NGƯỜI SỐNG GỬI ĐI
+    // LUá»’NG Má»ž BÃŒNH CHá»ŒN: SERVER Lá»ŒC Sáº´N DANH SÃCH NGÆ¯á»œI Sá»NG Gá»¬I ÄI
     socket.on('admin_open_vote_round', () => {
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
@@ -173,7 +245,7 @@ io.on('connection', (socket) => {
 
         io.emit('close_all_overlays'); 
         
-        // Server tự động xử lý lọc dữ liệu thô chuẩn đét trước khi phát đi
+        // Server tá»± Ä‘á»™ng xá»­ lÃ½ lá»c dá»¯ liá»‡u thÃ´ chuáº©n Ä‘Ã©t trÆ°á»›c khi phÃ¡t Ä‘i
         const livingPlayers = Object.values(players)
             .filter(p => p.isAlive)
             .map(p => ({ id: p.id, name: p.name }));
@@ -202,13 +274,27 @@ io.on('connection', (socket) => {
         let voteCounts = {};
         currentVotes.forEach(v => { voteCounts[v.targetId] = (voteCounts[v.targetId] || 0) + v.votes; });
         
-        let top5 = Object.keys(voteCounts).sort((a, b) => voteCounts[b] - voteCounts[a]).slice(0, 5);
-        let hasAssassin = top5.some(id => players[id] && players[id].role === "ASSASSIN");
+        const sortedIds = Object.keys(voteCounts).sort((a, b) => voteCounts[b] - voteCounts[a]);
+        const highestVote = sortedIds.length > 0 ? voteCounts[sortedIds[0]] : 0;
+        const top1 = sortedIds.filter(id => voteCounts[id] === highestVote);
+        const eliminatedAssassins = top1.filter(id => players[id] && players[id].role === "ASSASSIN" && players[id].isAlive);
+
+        eliminatedAssassins.forEach(id => {
+            players[id].isAlive = false;
+            io.to(id).emit('you_are_dead');
+            io.emit('player_died', { victimName: players[id].name });
+        });
+
+        let hasAssassin = eliminatedAssassins.length > 0;
+        const top5 = top1;
         
         io.emit('vote_result_announced', { 
             hasAssassin: hasAssassin, 
-            top5Names: top5.map(id => players[id] ? players[id].name : "Ẩn danh") 
+            top1Names: top1.map(id => players[id] ? players[id].name : "An danh"),
+            eliminatedNames: eliminatedAssassins.map(id => players[id].name),
+            top5Names: top5.map(id => players[id] ? players[id].name : "áº¨n danh") 
         });
+        io.emit('update_player_list', Object.values(players));
         io.emit('force_close_vote_screen');
     }
 
@@ -219,4 +305,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Hệ thống chạy mượt tại port ${PORT}`); });
+server.listen(PORT, () => { console.log(`Há»‡ thá»‘ng cháº¡y mÆ°á»£t táº¡i port ${PORT}`); });

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bàn Điều Phối Quản Trò</title>
+    <title>BÃ n Äiá»u Phá»‘i Quáº£n TrÃ²</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root { --bg-color: #0a192f; --bg-card: #112240; --text-main: #ccd6f6; --purple-tech: #b388ff; --cyan-tech: #64ffda; --alert-red: #ff6584; }
@@ -19,67 +19,68 @@
         .btn-start:hover { background: rgba(100, 255, 218, 0.1); }
         .player-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-card); border: 1px solid #233554; margin-bottom: 6px; border-radius: 4px; font-size: 14px;}
         .btn-kick { width: auto; padding: 4px 8px; background: rgba(255,101,132,0.1); border: 1px solid var(--alert-red); color: var(--alert-red); margin: 0; font-size: 12px; }
-        select, input { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
+        select, input, textarea { width: 100%; padding: 10px; background: var(--bg-card); border: 1px solid #233554; color: #fff; border-radius: 4px; margin-bottom: 10px; outline: none; }
+        textarea { min-height: 76px; resize: vertical; }
         .setup-row { display: flex; gap: 10px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>BÀN ĐIỀU PHỐI GAME</h2>
+    <h2>BÃ€N ÄIá»€U PHá»I GAME</h2>
     
     <div class="panel-box">
-        <div class="panel-title">👥 SƠ ĐỒ NHÂN SỰ TOÀN PHÒNG REALTIME (<span id="count">0</span>)</div>
+        <div class="panel-title">ðŸ‘¥ SÆ  Äá»’ NHÃ‚N Sá»° TOÃ€N PHÃ’NG REALTIME (<span id="count">0</span>)</div>
         <div id="player-list" style="max-height: 250px; overflow-y: auto; margin-bottom: 10px;"></div>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">⚔️ CẤU HÌNH BAN PHÁT VAI TRÒ</div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 1:</p>
+        <div class="panel-title">âš”ï¸ Cáº¤U HÃŒNH BAN PHÃT VAI TRÃ’</div>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 1:</p>
         <div class="setup-row">
-            <select id="as1-select" class="as-selector"><option value="">-- Chọn Sát Thủ 1 --</option></select>
-            <input type="text" id="as1-clue" placeholder="Nhập gợi ý cho Sát thủ 1...">
+            <select id="as1-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 1 --</option></select>
+            <input type="text" id="as1-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 1...">
         </div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 2:</p>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 2:</p>
         <div class="setup-row">
-            <select id="as2-select" class="as-selector"><option value="">-- Chọn Sát Thủ 2 --</option></select>
-            <input type="text" id="as2-clue" placeholder="Nhập gợi ý cho Sát thủ 2...">
+            <select id="as2-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 2 --</option></select>
+            <input type="text" id="as2-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 2...">
         </div>
-        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">• Chỉ định Sát thủ 3:</p>
+        <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">â€¢ Chá»‰ Ä‘á»‹nh SÃ¡t thá»§ 3:</p>
         <div class="setup-row">
-            <select id="as3-select" class="as-selector"><option value="">-- Chọn Sát Thủ 3 --</option></select>
-            <input type="text" id="as3-clue" placeholder="Nhập gợi ý cho Sát thủ 3...">
+            <select id="as3-select" class="as-selector"><option value="">-- Chá»n SÃ¡t Thá»§ 3 --</option></select>
+            <input type="text" id="as3-clue" placeholder="Nháº­p gá»£i Ã½ cho SÃ¡t thá»§ 3...">
         </div>
-        <button class="btn-start" onclick="submitAssignedRoles()">OK - XÁC NHẬN PHÁT VAI TRÒ</button>
+        <button class="btn-start" onclick="submitAssignedRoles()">OK - XÃC NHáº¬N PHÃT VAI TRÃ’</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">📝 KHO CÂU HỎI THIẾT LẬP SẴN (60 GIÂY)</div>
-        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: 60s</div>
+        <div class="panel-title">ðŸ“ KHO CÃ‚U Há»ŽI THIáº¾T Láº¬P Sáº´N (60 GIÃ‚Y)</div>
+        <div id="admin-timer" style="display:none; text-align: center; font-weight: bold; color: var(--cyan-tech); margin-bottom: 10px;">â³ THá»œI GIAN TRáº¢ Lá»œI CÃ’N Láº I: 60s</div>
         <select id="question-selector" onchange="loadPresetQuestion()">
-            <option value="">-- Chọn câu hỏi nhanh --</option>
-            <optgroup label="VÒNG 1: Trắc nghiệm ABCD">
-                <option value="v1_1">V1 - Sản phẩm chủ lực bán chạy nhất quý trước là gì?</option>
-                <option value="v1_2">V1 - KPI viếng thăm khách hàng (MCP) tối thiểu là bao nhiêu %?</option>
+            <option value="">-- Chá»n cÃ¢u há»i nhanh --</option>
+            <optgroup label="VÃ’NG 1: Tráº¯c nghiá»‡m ABCD">
+                <option value="v1_1">V1 - Sáº£n pháº©m chá»§ lá»±c bÃ¡n cháº¡y nháº¥t quÃ½ trÆ°á»›c lÃ  gÃ¬?</option>
+                <option value="v1_2">V1 - KPI viáº¿ng thÄƒm khÃ¡ch hÃ ng (MCP) tá»‘i thiá»ƒu lÃ  bao nhiÃªu %?</option>
             </optgroup>
-            <optgroup label="VÒNG 2: Tự luận (Nhập từ)">
-                <option value="v2_1">V2 - Điền từ: Khách hàng là ... của doanh nghiệp</option>
-                <option value="v2_2">V2 - Tên viết tắt của bộ phận Quản lý Hệ thống IT là gì?</option>
+            <optgroup label="VÃ’NG 2: Tá»± luáº­n (Nháº­p tá»«)">
+                <option value="v2_1">V2 - Äiá»n tá»«: KhÃ¡ch hÃ ng lÃ  ... cá»§a doanh nghiá»‡p</option>
+                <option value="v2_2">V2 - TÃªn viáº¿t táº¯t cá»§a bá»™ pháº­n Quáº£n lÃ½ Há»‡ thá»‘ng IT lÃ  gÃ¬?</option>
             </optgroup>
-            <optgroup label="VÒNG 3: Trắc nghiệm ABCD tăng tốc">
-                <option value="v3_1">V3 - Chiến dịch bùng nổ doanh số tới đây diễn ra vào tháng mấy?</option>
+            <optgroup label="VÃ’NG 3: Tráº¯c nghiá»‡m ABCD tÄƒng tá»‘c">
+                <option value="v3_1">V3 - Chiáº¿n dá»‹ch bÃ¹ng ná»• doanh sá»‘ tá»›i Ä‘Ã¢y diá»…n ra vÃ o thÃ¡ng máº¥y?</option>
             </optgroup>
         </select>
-        <input type="text" id="display-q" placeholder="Nội dung câu hỏi..." readonly>
-        <input type="text" id="display-a" placeholder="Đáp án đúng..." readonly>
-        <button onclick="triggerMinigame()">🔥 TUNG CÂU HỎI XUỐNG ĐIỆN THOẠI</button>
-        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-q" onclick="forceEndMinigame()">⏹ KHÓA SỔ CÂU HỎI SỚM</button>
+        <input type="text" id="display-q" placeholder="Ná»™i dung cÃ¢u há»i..." readonly>
+        <input type="text" id="display-a" placeholder="ÄÃ¡p Ã¡n Ä‘Ãºng..." readonly>
+        <button onclick="triggerMinigame()">ðŸ”¥ TUNG CÃ‚U Há»ŽI XUá»NG ÄIá»†N THOáº I</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-q" onclick="forceEndMinigame()">â¹ KHÃ“A Sá»” CÃ‚U Há»ŽI Sá»šM</button>
     </div>
 
     <div class="panel-box">
-        <div class="panel-title">🗳️ ĐIỀU HÀNH BỎ PHIẾU NGHI PHẠM (60 GIÂY)</div>
-        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">⏳ CỔNG VOTE ĐANG MỞ: 60s</div>
-        <button onclick="openVoteRound()">MỞ CỔNG VOTE (TỰ ĐỘNG KHÓA SAU 60S)</button>
-        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">⏹ KHÓA CỔNG BỎ PHIẾU SỚM</button>
+        <div class="panel-title">ðŸ—³ï¸ ÄIá»€U HÃ€NH Bá»Ž PHIáº¾U NGHI PHáº M (60 GIÃ‚Y)</div>
+        <div id="admin-vote-timer" style="display:none; text-align: center; font-weight: bold; color: var(--alert-red); margin-bottom: 10px;">â³ Cá»”NG VOTE ÄANG Má»ž: 60s</div>
+        <button onclick="openVoteRound()">Má»ž Cá»”NG VOTE (Tá»° Äá»˜NG KHÃ“A SAU 60S)</button>
+        <button style="border-color: var(--alert-red); color: var(--alert-red); display:none;" id="btn-stop-v" onclick="forceEndVote()">â¹ KHÃ“A Cá»”NG Bá»Ž PHIáº¾U Sá»šM</button>
     </div>
 </div>
 
@@ -87,30 +88,92 @@
     const socket = io();
     let currentQData = null;
     let adminTimerInterval = null;
+    let latestPlayers = [];
 
     const presets = {
-        v1_1: { type: "CHOICE", q: "Sản phẩm chủ lực bán chạy nhất quý trước là gì?", a: "A", options: ["A. Sữa tươi tiệt trùng", "B. Nước mắm cốt", "C. Mì ăn liền", "D. Bánh ngọt"] },
-        v1_2: { type: "CHOICE", q: "KPI viếng thăm khách hàng (MCP) chuẩn quy định tối thiểu bao nhiêu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
-        v2_1: { type: "TEXT", q: "Điền từ: Khách hàng là ________ của doanh nghiệp (viết liền không dấu)", a: "thuongde" },
-        v2_2: { type: "TEXT", q: "Tên viết tắt của bộ phận Hệ thống Quản trị Kênh Phân Phối Sales là gì?", a: "dms" },
-        v3_1: { type: "CHOICE", q: "Chiến dịch bùng nổ doanh số toàn quốc sắp tới sẽ diễn ra vào tháng mấy?", a: "B", options: ["A. Tháng 7", "B. Tháng 8", "C. Tháng 9", "D. Tháng 10"] }
+        v1_1: { type: "CHOICE", q: "Sáº£n pháº©m chá»§ lá»±c bÃ¡n cháº¡y nháº¥t quÃ½ trÆ°á»›c lÃ  gÃ¬?", a: "A", options: ["A. Sá»¯a tÆ°Æ¡i tiá»‡t trÃ¹ng", "B. NÆ°á»›c máº¯m cá»‘t", "C. MÃ¬ Äƒn liá»n", "D. BÃ¡nh ngá»t"] },
+        v1_2: { type: "CHOICE", q: "KPI viáº¿ng thÄƒm khÃ¡ch hÃ ng (MCP) chuáº©n quy Ä‘á»‹nh tá»‘i thiá»ƒu bao nhiÃªu %?", a: "C", options: ["A. 70%", "B. 75%", "C. 80%", "D. 85%"] },
+        v2_1: { type: "TEXT", q: "Äiá»n tá»«: KhÃ¡ch hÃ ng lÃ  ________ cá»§a doanh nghiá»‡p (viáº¿t liá»n khÃ´ng dáº¥u)", a: "thuongde" },
+        v2_2: { type: "TEXT", q: "TÃªn viáº¿t táº¯t cá»§a bá»™ pháº­n Há»‡ thá»‘ng Quáº£n trá»‹ KÃªnh PhÃ¢n Phá»‘i Sales lÃ  gÃ¬?", a: "dms" },
+        v3_1: { type: "CHOICE", q: "Chiáº¿n dá»‹ch bÃ¹ng ná»• doanh sá»‘ toÃ n quá»‘c sáº¯p tá»›i sáº½ diá»…n ra vÃ o thÃ¡ng máº¥y?", a: "B", options: ["A. ThÃ¡ng 7", "B. ThÃ¡ng 8", "C. ThÃ¡ng 9", "D. ThÃ¡ng 10"] }
     };
+
+    function getPlayerOptions(selectedId = "") {
+        return `<option value="">-- Chon nhan su --</option>` + latestPlayers
+            .filter(p => p.isAlive)
+            .map(p => `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${p.name}</option>`)
+            .join('');
+    }
+
+    function installAssassinSetupPanel() {
+        const firstSelector = document.getElementById('as1-select');
+        if (!firstSelector) return;
+
+        const panel = firstSelector.closest('.panel-box');
+        panel.innerHTML = `
+            <div class="panel-title">CAU HINH BAN PHAT VAI TRO</div>
+            <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">So luong sat thu:</p>
+            <input type="number" id="assassin-count" min="1" value="3" onchange="renderAssassinSetup()">
+            <div id="assassin-config-list"></div>
+            <div style="border-top:1px solid #233554; padding-top:10px; margin-top:10px;">
+                <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Nhap them goi y khi he thong het goi y:</p>
+                <textarea id="extra-hints" placeholder="Moi dong la 1 goi y moi..."></textarea>
+                <button onclick="addExtraHints()">THEM GOI Y</button>
+            </div>
+            <button class="btn-start" onclick="submitAssignedRoles()">OK - XAC NHAN PHAT VAI TRO</button>
+        `;
+        renderAssassinSetup();
+    }
+
+    function renderAssassinSetup() {
+        const countInput = document.getElementById('assassin-count');
+        const container = document.getElementById('assassin-config-list');
+        if (!countInput || !container) return;
+
+        const oldRows = [...container.querySelectorAll('.assassin-row')].map(row => ({
+            id: row.querySelector('.as-selector')?.value || "",
+            hints: row.querySelector('.as-hints')?.value || ""
+        }));
+        const count = Math.max(1, Number(countInput.value) || 1);
+
+        container.innerHTML = Array.from({ length: count }, (_, index) => {
+            const old = oldRows[index] || {};
+            return `
+                <div class="assassin-row">
+                    <p style="font-size: 13px; color: var(--cyan-tech); margin-bottom: 5px;">Sat thu ${index + 1}:</p>
+                    <select class="as-selector">${getPlayerOptions(old.id)}</select>
+                    <textarea class="as-hints" placeholder="Nhap nhieu goi y cho sat thu ${index + 1}, moi dong la 1 goi y...">${old.hints || ""}</textarea>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function addExtraHints() {
+        const input = document.getElementById('extra-hints');
+        const hints = input.value.trim();
+        if (!hints) return alert("Vui long nhap it nhat 1 goi y moi!");
+        socket.emit('admin_add_assassin_hints', { hints });
+        input.value = "";
+    }
+
+    installAssassinSetupPanel();
 
     function loadPresetQuestion() {
         const id = document.getElementById('question-selector').value;
         if(!id) return;
         currentQData = presets[id];
         document.getElementById('display-q').value = currentQData.q;
-        document.getElementById('display-a').value = `Đáp án đúng: ${currentQData.a.toUpperCase()}`;
+        document.getElementById('display-a').value = `ÄÃ¡p Ã¡n Ä‘Ãºng: ${currentQData.a.toUpperCase()}`;
     }
 
     socket.on('update_player_list', (list) => {
+        latestPlayers = list;
         document.getElementById('count').innerText = list.length;
         
         const container = document.getElementById('player-list');
         container.innerHTML = list.map((p, index) => {
-            let roleText = p.role === 'PENDING' ? 'Chưa phân vai' : p.role === 'ASSASSIN' ? 'Sát thủ 🩸' : 'Cảnh sát 🛡️';
-            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">↳ Gợi ý: "${p.clue}" [Cướp thêm: ${p.stolenVotes} phiếu]</span>` : '';
+            let roleText = p.role === 'PENDING' ? 'ChÆ°a phÃ¢n vai' : p.role === 'ASSASSIN' ? 'SÃ¡t thá»§ ðŸ©¸' : 'Cáº£nh sÃ¡t ðŸ›¡ï¸';
+            let clueDetailHTML = (p.role === 'ASSASSIN' && p.clue) ? `<br><span style="color:var(--alert-red); font-size:12px;">â†³ Gá»£i Ã½: "${p.clue}" [CÆ°á»›p thÃªm: ${p.stolenVotes} phiáº¿u]</span>` : '';
             
             return `
                 <div class="player-item">
@@ -119,8 +182,8 @@
                         ${clueDetailHTML}
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <span style="font-weight:bold; font-size:12px; color:${p.isAlive ? '#64ffda' : '#ff6584'}">${p.isAlive ? 'SỐNG' : 'CHẾT'}</span>
-                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Đuổi</button>
+                        <span style="font-weight:bold; font-size:12px; color:${p.isAlive ? '#64ffda' : '#ff6584'}">${p.isAlive ? 'Sá»NG' : 'CHáº¾T'}</span>
+                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">Äuá»•i</button>
                     </div>
                 </div>
             `;
@@ -129,14 +192,14 @@
         const selectors = document.querySelectorAll('.as-selector');
         selectors.forEach(sel => {
             const currentVal = sel.value;
-            sel.innerHTML = `<option value="">-- Chọn Nhân Sự --</option>` + list.filter(p => p.isAlive).map(p => `
+            sel.innerHTML = `<option value="">-- Chá»n NhÃ¢n Sá»± --</option>` + list.filter(p => p.isAlive).map(p => `
                 <option value="${p.id}">${p.name}</option>
             `).join('');
             sel.value = currentVal;
         });
     });
 
-    function kickPlayer(socketId) { if(confirm("Xóa người chơi?")) { socket.emit('kick_player_by_admin', socketId); } }
+    function kickPlayer(socketId) { if(confirm("XÃ³a ngÆ°á»i chÆ¡i?")) { socket.emit('kick_player_by_admin', socketId); } }
 
     function submitAssignedRoles() {
         const id1 = document.getElementById('as1-select').value;
@@ -146,7 +209,7 @@
         const id3 = document.getElementById('as3-select').value;
         const clue3 = document.getElementById('as3-clue').value;
 
-        if(!id1 && !id2 && !id3) return alert("Vui lòng chỉ định ít nhất 1 Sát thủ!");
+        if(!id1 && !id2 && !id3) return alert("Vui lÃ²ng chá»‰ Ä‘á»‹nh Ã­t nháº¥t 1 SÃ¡t thá»§!");
 
         socket.emit('admin_assign_roles', {
             assassins: [
@@ -155,11 +218,23 @@
                 { id: id3, clue: clue3 }
             ]
         });
-        alert("Đã gửi danh tính cài đặt toàn phòng thành công!");
+        alert("ÄÃ£ gá»­i danh tÃ­nh cÃ i Ä‘áº·t toÃ n phÃ²ng thÃ nh cÃ´ng!");
     }
     
+    function submitAssignedRoles() {
+        const assassins = [...document.querySelectorAll('.assassin-row')].map(row => ({
+            id: row.querySelector('.as-selector').value,
+            hints: row.querySelector('.as-hints').value
+        })).filter(as => as.id);
+
+        if(assassins.length === 0) return alert("Vui long chi dinh it nhat 1 sat thu!");
+
+        socket.emit('admin_assign_roles', { assassins: assassins });
+        alert("Da gui danh tinh cai dat toan phong thanh cong!");
+    }
+
     function triggerMinigame() {
-        if(!currentQData) return alert("Vui lòng lựa chọn câu hỏi mẫu trước!");
+        if(!currentQData) return alert("Vui lÃ²ng lá»±a chá»n cÃ¢u há»i máº«u trÆ°á»›c!");
         socket.emit('host_trigger_minigame', { id: Date.now(), type: currentQData.type, question: currentQData.q, correctAnswer: currentQData.a, options: currentQData.options || [] });
         
         if(adminTimerInterval) clearInterval(adminTimerInterval);
@@ -170,7 +245,7 @@
 
         adminTimerInterval = setInterval(() => {
             timeLeft--;
-            timerBox.innerText = `⏳ THỜI GIAN TRẢ LỜI CÒN LẠI: ${timeLeft}s`;
+            timerBox.innerText = `â³ THá»œI GIAN TRáº¢ Lá»œI CÃ’N Láº I: ${timeLeft}s`;
             if(timeLeft <= 0) { clearInterval(adminTimerInterval); timerBox.style.display = 'none'; document.getElementById('btn-stop-q').style.display = 'none';}
         }, 1000);
     }
@@ -187,7 +262,7 @@
 
         adminTimerInterval = setInterval(() => {
             voteTimeLeft--;
-            voteTimerBox.innerText = `⏳ CỔNG VOTE ĐANG MỞ: ${voteTimeLeft}s`;
+            voteTimerBox.innerText = `â³ Cá»”NG VOTE ÄANG Má»ž: ${voteTimeLeft}s`;
             if(voteTimeLeft <= 0) { clearInterval(adminTimerInterval); voteTimerBox.style.display = 'none'; document.getElementById('btn-stop-v').style.display = 'none';}
         }, 1000);
     }
@@ -198,16 +273,25 @@
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-timer').style.display = 'none';
         document.getElementById('btn-stop-q').style.display = 'none';
-        alert(`CÂU HỎI KẾT THÚC!\n🏆 Top 3 nhanh nhất: ${winners.length > 0 ? winners.join(', ') : 'Không ai nộp bài kịp!'}`);
+        alert(`CÃ‚U Há»ŽI Káº¾T THÃšC!\nðŸ† Top 3 nhanh nháº¥t: ${winners.length > 0 ? winners.join(', ') : 'KhÃ´ng ai ná»™p bÃ i ká»‹p!'}`);
     });
 
-    socket.on('player_died', (data) => alert(`HỆ THỐNG: Mật vụ [ ${data.victimName} ] đã trúng độc tử trận!`));
+    socket.on('player_died', (data) => alert(`Há»† THá»NG: Máº­t vá»¥ [ ${data.victimName} ] Ä‘Ã£ trÃºng Ä‘á»™c tá»­ tráº­n!`));
     
+    socket.on('assassin_hints_empty', () => {
+        alert("He thong da het goi y. Hay nhap them goi y o khung bo sung.");
+    });
+
+    socket.on('assassin_hints_updated', (data) => {
+        alert(`Da them ${data.addedHints} goi y. Con ${data.remainingHints} goi y chua hien thi.`);
+    });
+
     socket.on('vote_result_announced', (data) => {
         if(adminTimerInterval) clearInterval(adminTimerInterval);
         document.getElementById('admin-vote-timer').style.display = 'none';
         document.getElementById('btn-stop-v').style.display = 'none';
-        alert(`KẾT QUẢ VOTE ROUND:\nTop 5 nghi phạm: ${data.top5Names.join(', ')}\n-> QUÉT HỆ THỐNG: ${data.hasAssassin ? 'CÓ SÁT THỦ TRONG TOP 5! 🩸' : 'AN TOÀN, KHÔNG CÓ SÁT THỦ. 🛡️'}`);
+        const topNames = (data.top1Names || data.top5Names || []).join(', ');
+        alert(`KET QUA VOTE ROUND:\nTop 1 luot vote: ${topNames}\n-> ${data.hasAssassin ? 'Sat thu trong top 1 da bi loai!' : 'Top 1 khong phai sat thu, khong ai bi loai.'}`);
     });
 </script>
 </body>
