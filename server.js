@@ -13,35 +13,30 @@ app.get('/', (req, res) => { res.sendFile(path.resolve(__dirname, 'index.html'))
 app.get('/admin', (req, res) => { res.sendFile(path.resolve(__dirname, 'admin.html')); });
 
 let players = {}; 
-let spyHistory = {}; // Lưu trữ nhật ký xem ai đã từng làm gián điệp nhằm đảm bảo ai cũng được làm 1 lần
-
+let assassinsConfig = []; 
 let minigameTimeout = null;
 let minigameActive = false;
 let currentCorrectAnswer = "";
+let minigameAnswers = []; 
 
 let voteTimeout = null;
 let voteActive = false;
-let currentVotes = []; // Lưu phiếu vote [{voterId, chosenIds: []}]
-let currentSpyCount = 5; // Số lượng gián điệp mặc định
+let currentVotes = []; 
 
 io.on('connection', (socket) => {
     console.log(`Kết nối: ${socket.id}`);
     socket.emit('update_player_list', Object.values(players));
 
     socket.on('join_game', (data) => {
-        // Nếu người chơi cũ rớt mạng vào lại, giữ nguyên điểm số
-        if (!players[socket.id]) {
-            players[socket.id] = {
-                id: socket.id,
-                name: data.name,
-                role: "PENDING",
-                isAlive: true,
-                score: 0, // Lưu tổng điểm xuyên suốt các lượt
-                desc: "", // Câu mô tả từ khóa
-                votedSpiesCount: 0,
-                beVotedCount: 0
-            };
-        }
+        players[socket.id] = {
+            id: socket.id,
+            name: data.name,
+            role: "PENDING",
+            isAlive: true,
+            stolenVotes: 0, 
+            clue: "",
+            correctAnswersCount: 0 
+        };
         io.emit('update_player_list', Object.values(players));
     });
 
@@ -53,144 +48,169 @@ io.on('connection', (socket) => {
         }
     });
 
-    // LUỒNG CHIA BÀI THÔNG MINH - ĐẢM BẢO AI CŨNG LÀM GIÁN ĐIỆP ĐÚNG 1 LẦN
-    socket.on('admin_start_new_round', (data) => {
-        // data: { normalWord: "Tuổi trẻ", spyWord: "Thanh xuân", spyCount: 5 }
-        const playerIds = Object.keys(players);
-        if (playerIds.length < 3) {
-            socket.emit('error_msg', 'Không đủ người chơi để chạy lượt mới!');
-            return;
-        }
+    socket.on('admin_assign_roles', (data) => {
+        assassinsConfig = data.assassins.filter(as => as.id !== "");
 
-        currentSpyCount = parseInt(data.spyCount) || 5;
-        minigameActive = true; 
-        currentVotes = [];
+        Object.keys(players).forEach(id => {
+            players[id].role = "POLICE";
+            players[id].clue = "";
+            players[id].correctAnswersCount = 0;
+            players[id].stolenVotes = 0;
+        });
 
-        // Bắn thông báo số lượng gián điệp xuống app của tất cả mọi người
-        io.emit('announce_spy_config', { spyCount: currentSpyCount });
+        data.assassins.forEach((as) => {
+            if (as.id && players[as.id]) {
+                players[as.id].role = "ASSASSIN";
+                players[as.id].clue = as.clue;
+            }
+        });
 
-        // Lọc ra những người CHƯA TỪNG làm gián điệp để ưu tiên bốc trước
-        let candidateIds = playerIds.filter(id => !spyHistory[players[id].name]);
-        
-        // Nếu ai cũng làm gián điệp rồi thì reset lịch sử để xoay vòng mới
-        if (candidateIds.length < currentSpyCount) {
-            spyHistory = {};
-            candidateIds = playerIds;
-        }
-
-        // Trộn ngẫu nhiên danh sách ứng viên gián điệp
-        let shuffledCandidates = [...candidateIds].sort(() => 0.5 - Math.random());
-        let selectedSpyIds = shuffledCandidates.slice(0, currentSpyCount);
-
-        // Gán vai trò và phát từ khóa bí mật xuống máy người chơi
-        playerIds.forEach(id => {
-            players[id].desc = ""; // Reset mô tả cũ
-            if (selectedSpyIds.includes(id)) {
-                players[id].role = "SPY";
-                spyHistory[players[id].name] = true; // Ghi nhận nhật ký
-                io.to(id).emit('receive_word_package', { 
-                    role: "SPY", 
-                    word: data.spyWord,
-                    message: `Bạn là GIÁN ĐIỆP 🩸. Từ khóa ẩn danh của bạn là: "${data.spyWord}". Hãy dùng 1-2 từ mô tả để lừa Cảnh sát!`
+        Object.keys(players).forEach(id => {
+            if (players[id].role === "ASSASSIN") {
+                io.to(id).emit('receive_role', { 
+                    role: "ASSASSIN", 
+                    message: `Bạn là sát thủ, hãy nhanh chóng bắn thật nhiều cảnh sát. Gợi ý về bạn là: ${players[id].clue}`
                 });
             } else {
-                players[id].role = "NORMAL";
-                io.to(id).emit('receive_word_package', { 
-                    role: "NORMAL", 
-                    word: data.normalWord,
-                    message: `Bạn là người BÌNH THƯỜNG 🛡️. Từ khóa của bạn là: "${data.normalWord}". Hãy nhập 1-2 từ mô tả chính xác!`
+                io.to(id).emit('receive_role', { 
+                    role: "POLICE", 
+                    message: "Xin chào cảnh sát, hãy mau chóng tìm ra sát thủ trước khi bị loại"
                 });
             }
         });
 
-        io.emit('start_desc_phase', { duration: 60 });
         io.emit('update_player_list', Object.values(players));
-
-        // Tự động khóa sổ phase nhập mô tả sau 60 giây
-        if (minigameTimeout) clearTimeout(minigameTimeout);
-        minigameTimeout = setTimeout(() => {
-            io.emit('force_close_desc_phase');
-            minigameActive = false;
-        }, 60000);
     });
 
-    // NGƯỜI CHƠI NỘP CÂU MÔ TẢ
-    socket.on('submit_description', (text) => {
-        if (players[socket.id]) {
-            players[socket.id].desc = text;
-            io.emit('update_player_list', Object.values(players)); // Hiện realtime câu mô tả lên màn hình Admin
+    socket.on('assassinate_player', (targetId) => {
+        const killer = players[socket.id];
+        const victim = players[targetId];
+
+        if (killer && killer.role === "ASSASSIN" && victim && victim.isAlive) {
+            victim.isAlive = false;
+            killer.stolenVotes += 1; 
+            
+            io.to(targetId).emit('you_are_dead');
+            io.emit('player_died', { victimName: victim.name });
+            io.emit('update_player_list', Object.values(players));
         }
     });
 
-    // QUẢN TRÒ MỞ CỔNG BÌNH CHỌN 60 GIÂY
+    socket.on('host_trigger_minigame', (data) => {
+        if (minigameTimeout) clearTimeout(minigameTimeout);
+        minigameActive = true;
+        currentCorrectAnswer = data.correctAnswer.toUpperCase().trim();
+        minigameAnswers = [];
+
+        io.emit('close_all_overlays'); 
+        
+        io.emit('receive_minigame_question', {
+            type: data.type,
+            question: data.question,
+            options: data.options,
+            duration: 60
+        });
+
+        minigameTimeout = setTimeout(() => { if (minigameActive) endMinigame(); }, 60000);
+    });
+
+    socket.on('submit_minigame_answer', (answerText) => {
+        if (!minigameActive) return;
+        const p = players[socket.id];
+        if (!p || !p.isAlive) return;
+
+        const isCorrect = answerText.toUpperCase().trim() === currentCorrectAnswer;
+        socket.emit('minigame_feedback', { isCorrect: isCorrect });
+
+        if (isCorrect && !minigameAnswers.some(ans => ans.id === socket.id)) {
+            p.correctAnswersCount += 1; 
+            minigameAnswers.push({ id: socket.id, name: p.name, time: Date.now() });
+
+            if (p.role === 'POLICE') {
+                let clueMessage = "";
+                if (p.correctAnswersCount === 1 && assassinsConfig[0]) {
+                    clueMessage = `Gợi ý về Sát thủ 1: "${assassinsConfig[0].clue}"`;
+                } else if (p.correctAnswersCount === 2 && assassinsConfig[1]) {
+                    clueMessage = `Gợi ý về Sát thủ 2: "${assassinsConfig[1].clue}"`;
+                } else if (p.correctAnswersCount >= 3 && assassinsConfig[2]) {
+                    clueMessage = `Gợi ý về Sát thủ 3: "${assassinsConfig[2].clue}"`;
+                } else {
+                    clueMessage = "Hệ thống đã hết manh mối để cung cấp!";
+                }
+                
+                socket.emit('receive_reward', {
+                    type: 'CLUE',
+                    message: `🎉 CHÚC MỪNG BẠN TRẢ LỜI CHÍNH XÁC!<br>Đây là lần đúng thứ ${p.correctAnswersCount} của bạn.<br><br><b>${clueMessage}</b>`
+                });
+            } else if (p.role === 'ASSASSIN') {
+                socket.emit('receive_reward', {
+                    type: 'KILL_SKILL',
+                    message: `🎉 CHÚC MỪNG SÁT THỦ TRẢ LỜI CHÍNH XÁC!<br><br><b>Nhiệm vụ hành động:</b> Hãy đi cụng ly hoặc hô hào mọi người lên bia với 1 mục tiêu Cảnh sát. Sau khi làm xong hành động ngoài đời, hãy chọn tên họ bên dưới để loại họ ngay lập tức!`
+                });
+            }
+        }
+    });
+
+    socket.on('admin_force_end_minigame', () => { if (minigameActive) endMinigame(); });
+
+    function startMinigameTimer(duration) {
+        // Hàm phụ trợ nếu cần quản lý nâng cao bộ đếm
+    }
+
+    function endMinigame() {
+        minigameActive = false;
+        if (minigameTimeout) clearTimeout(minigameTimeout);
+        const winners = minigameAnswers.slice(0, 3).map(ans => ans.name);
+        io.emit('minigame_ended', winners);
+        io.emit('force_close_question');
+    }
+
+    // LUỒNG MỞ BÌNH CHỌN: SERVER LỌC SẴN DANH SÁCH NGƯỜI SỐNG GỬI ĐI
     socket.on('admin_open_vote_round', () => {
         if (voteTimeout) clearTimeout(voteTimeout);
         voteActive = true;
         currentVotes = [];
 
-        const cleanList = Object.values(players).map(p => ({ id: p.id, name: p.name, desc: p.desc || "Chưa nhập mô tả" }));
-        io.emit('open_vote_round', { duration: 60, playerList: cleanList, requiredSelectCount: currentSpyCount });
+        io.emit('close_all_overlays'); 
+        
+        // Server tự động xử lý lọc dữ liệu thô chuẩn đét trước khi phát đi
+        const livingPlayers = Object.values(players)
+            .filter(p => p.isAlive)
+            .map(p => ({ id: p.id, name: p.name }));
 
-        voteTimeout = setTimeout(() => { if (voteActive) calculateRoundScores(); }, 60000);
+        io.emit('open_vote_round', { duration: 60, targetList: livingPlayers });
+
+        voteTimeout = setTimeout(() => { if (voteActive) endVoteRound(); }, 60000);
     });
 
-    // TIẾP NHẬN PHIẾU BẦU
     socket.on('submit_votes_round', (data) => {
         if (!voteActive) return;
-        // data: { voterId: '...', chosenIds: ['id1', 'id2', ...] }
-        currentVotes.push(data);
+        data.chosenIds.forEach(targetId => {
+            currentVotes.push({
+                targetId: targetId,
+                votes: data.weight 
+            });
+        });
     });
 
-    socket.on('admin_force_end_vote', () => { if (voteActive) calculateRoundScores(); });
+    socket.on('admin_force_end_vote', () => { if (voteActive) endVoteRound(); });
 
-    // HÀM TÍNH ĐIỂM SỐ TỰ ĐỘNG THUẬN TOÁN MỚI (+10 / -5)
-    function calculateRoundScores() {
+    function endVoteRound() {
         voteActive = false;
         if (voteTimeout) clearTimeout(voteTimeout);
 
-        // Reset bộ đếm vòng này
-        Object.keys(players).forEach(id => {
-            players[id].votedSpiesCount = 0;
-            players[id].beVotedCount = 0;
+        let voteCounts = {};
+        currentVotes.forEach(v => { voteCounts[v.targetId] = (voteCounts[v.targetId] || 0) + v.votes; });
+        
+        let top5 = Object.keys(voteCounts).sort((a, b) => voteCounts[b] - voteCounts[a]).slice(0, 5);
+        let hasAssassin = top5.some(id => players[id] && players[id].role === "ASSASSIN");
+        
+        io.emit('vote_result_announced', { 
+            hasAssassin: hasAssassin, 
+            top5Names: top5.map(id => players[id] ? players[id].name : "Ẩn danh") 
         });
-
-        // Đếm số phiếu bầu
-        currentVotes.forEach(votePack => {
-            votePack.chosenIds.forEach(targetId => {
-                if (players[targetId]) {
-                    players[targetId].beVotedCount += 1; // Đếm số phiếu người này bị nhận
-                    
-                    // Nếu người bầu vote trúng Gián điệp thực sự
-                    if (players[targetId].role === "SPY" && players[votePack.voterId]) {
-                        players[votePack.voterId].votedSpiesCount += 1;
-                    }
-                }
-            });
-        });
-
-        // Áp dụng công thức tính điểm toán học
-        Object.keys(players).forEach(id => {
-            let p = players[id];
-            if (p.role === "NORMAL") {
-                // Người bình thường: chọn đúng 1 gián điệp được +10 điểm
-                p.score += p.votedSpiesCount * 10;
-            } else if (p.role === "SPY") {
-                // Gián điệp: Bị chọn trúng 1 phiếu bị trừ 5 điểm
-                p.score -= p.beVotedCount * 5;
-            }
-        });
-
-        // Phát tín hiệu thông báo vòng này kết thúc
-        io.emit('vote_round_ended');
-        io.emit('update_player_list', Object.values(players));
+        io.emit('force_close_vote_screen');
     }
-
-    // QUẢN TRÒ BẤM NÚT TỔNG KẾT ĐỂ XUẤT BẢNG XẾP HẠNG CHUNG CUỘC
-    socket.on('admin_trigger_summary', () => {
-        // Sắp xếp danh sách từ trên xuống dưới theo điểm số
-        let leaderboard = Object.values(players).sort((a, b) => b.score - a.score);
-        io.emit('game_over_leaderboard', leaderboard);
-    });
 
     socket.on('disconnect', () => {
         delete players[socket.id];
